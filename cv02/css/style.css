@@ -1,0 +1,160 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Impact, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #9b9b9b;
+}
+
+.layout {
+    display: grid;
+    grid-template-areas:
+    "header header header"
+    "leftBorder main rightBorder" 
+    "footer footer footer";
+    grid-template-rows: 10vh 80vh 10vh;
+    grid-template-columns: 4fr 8fr 4fr;
+}
+
+.header {
+    grid-area: header;
+    background-color: #333;
+    color: white;
+    display: flex;
+    align-items: center;
+}
+
+.header h1 {
+    padding: 1vh;
+    padding-left: 1vw;
+}
+
+.leftBorder {
+    display: flex;
+    grid-area: leftBorder;
+    background-color: #555;
+    height: 100%;
+    justify-content: center;
+}
+
+.movementButtons {
+    display: grid;
+    grid-template-areas: 
+    "mov-title mov-title mov-title"
+    ". mov-up ."
+    "mov-left . mov-right"
+    ". mov-down .";
+    grid-template-rows: 1fr 3fr 3fr 3fr;
+    grid-template-columns: 1fr 1fr 1fr;
+
+    color: white;
+    margin-top: 10%;
+    margin-bottom: 10%;
+    padding: 10px;
+    width: 50%;
+    height: 30%;
+    border: 0.4em solid rgb(210, 209, 209);
+}
+
+#movementButtonsTitle {
+    grid-area: mov-title;
+    text-align: center;
+    padding-bottom: 10%;
+}
+
+.movementButton {
+    cursor: pointer;
+}
+
+#forwardBtn {
+    grid-area: mov-up;
+}
+
+#leftBtn {
+    grid-area: mov-left;
+}
+
+#rightBtn {
+    grid-area: mov-right;
+}
+
+#backwardBtn {
+    grid-area: mov-down;
+}
+
+.main {
+    grid-area: main;
+    padding: 1vh;
+    background-image: url("../img/mars_footage.png");
+    background-size: cover;
+    color: white;
+    text-align: center;
+    border: 0.2em solid rgb(0, 196, 20);
+}
+
+.rightBorder {
+    display: flex;
+    grid-area: rightBorder;
+    background-color: #555;
+    height: 100%;
+    justify-content: center;
+}
+
+.cameraButtons {
+    display: grid;
+    grid-template-areas: 
+    "cam-title cam-title cam-title"
+    ". cam-up ."
+    "cam-left . cam-right"
+    ". cam-down .";
+    grid-template-rows: 1fr 3fr 3fr 3fr;
+    grid-template-columns: 1fr 1fr 1fr;
+
+    color: white;
+    margin-top: 10%;
+    margin-bottom: 10%;
+    padding: 10px;
+    width: 50%;
+    height: 30%;
+    border: 0.4em solid rgb(210, 209, 209);
+}
+
+#cameraButtonsTitle {
+    grid-area: cam-title;
+    text-align: center;
+    padding-bottom: 10%;
+}
+
+.cameraButton {
+    cursor: pointer;
+}
+
+#cameraUpBtn {
+    grid-area: cam-up;
+}
+
+#cameraLeftBtn {
+    grid-area: cam-left;
+}
+
+#cameraRightBtn {
+    grid-area: cam-right;
+}
+
+#cameraDownBtn {
+    grid-area: cam-down;
+}
+
+#app {
+    text-align: center;
+}
+
+.footer {
+    grid-area: footer;
+    background-color: #333;
+    color: white;
+    text-align: center;
+}
