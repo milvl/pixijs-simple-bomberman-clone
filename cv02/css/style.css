@@ -21,15 +21,53 @@ body {
 
 .header {
     grid-area: header;
+    display: grid;
+    grid-template-areas:
+    "headerTitle locationBox cameraAngleBox";
+    grid-template-rows: 1fr;
+    grid-template-columns: 2fr 1fr 1fr;
     background-color: #333;
     color: white;
-    display: flex;
     align-items: center;
+
 }
 
 .header h1 {
-    padding: 1vh;
+    grid-area: headerTitle;
     padding-left: 1vw;
+}
+
+#locationBox {
+    grid-area: locationBox;
+    display: flex;
+    border: 0.2em solid white;
+    width: fit-content;
+    padding: 0.5em;
+}
+
+#location {
+    text-align: left;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
+
+#cameraAngleBox {
+    grid-area: cameraAngleBox;
+    display: flex;
+    align-items: flex-start;
+    border: 0.2em solid white;
+    width: fit-content;
+    padding: 0.5em;
+}
+
+#cameraAngleTitle {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
+
+#cameraAngle {
+    text-align: left;
+    padding-left: 0.5em;
 }
 
 .leftBorder {
@@ -47,15 +85,15 @@ body {
     ". mov-up ."
     "mov-left . mov-right"
     ". mov-down .";
-    grid-template-rows: 1fr 3fr 3fr 3fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr;
     grid-template-columns: 1fr 1fr 1fr;
 
     color: white;
     margin-top: 10%;
     margin-bottom: 10%;
+    width: 40%;
+    height: fit-content;
     padding: 10px;
-    width: 50%;
-    height: 30%;
     border: 0.4em solid rgb(210, 209, 209);
 }
 
@@ -67,6 +105,11 @@ body {
 
 .movementButton {
     cursor: pointer;
+    max-width: 3vw;
+    max-height: 3vw;
+    min-width: 1vw;
+    min-height: 1vw;
+    font-size: 2em;
 }
 
 #forwardBtn {
@@ -110,15 +153,15 @@ body {
     ". cam-up ."
     "cam-left . cam-right"
     ". cam-down .";
-    grid-template-rows: 1fr 3fr 3fr 3fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr;
     grid-template-columns: 1fr 1fr 1fr;
 
     color: white;
     margin-top: 10%;
     margin-bottom: 10%;
     padding: 10px;
-    width: 50%;
-    height: 30%;
+    width: 40%;
+    height: fit-content;
     border: 0.4em solid rgb(210, 209, 209);
 }
 
@@ -130,6 +173,11 @@ body {
 
 .cameraButton {
     cursor: pointer;
+    max-width: 3vw;
+    max-height: 3vw;
+    min-width: 1vw;
+    min-height: 1vw;
+    font-size: 2em;
 }
 
 #cameraUpBtn {
@@ -148,13 +196,47 @@ body {
     grid-area: cam-down;
 }
 
-#app {
-    text-align: center;
-}
-
 .footer {
     grid-area: footer;
     background-color: #333;
     color: white;
     text-align: center;
+}
+
+@media screen and (max-width: 600px) {
+    .layout {
+        grid-template-areas:
+            "header"
+            "main"
+            "leftBorder"
+            "rightBorder"
+            "footer";
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+
+    .main {
+        height: 20vh;
+        width: 100%;
+    }
+
+    .header, .leftBorder, .rightBorder, .footer {
+        padding: 5%;
+    }
+
+    .movementButtons, .cameraButtons {
+        width: 80%; 
+        height: auto; 
+        margin-top: 5%; 
+        margin-bottom: 5%; 
+    }
+
+    .movementButton, .cameraButton {
+        min-width: 45px; 
+        min-height: 45px;
+    }
+
+    body, #movementButtonsTitle, #cameraButtonsTitle, #location, #cameraAngle {
+        font-size: 4vw;
+    }
 }
