@@ -3,7 +3,7 @@
 }
 
 body {
-    font-family: Impact, sans-serif;
+    font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
     background-color: #9b9b9b;
@@ -29,12 +29,12 @@ body {
     background-color: #333;
     color: white;
     align-items: center;
-
 }
 
 .header h1 {
     grid-area: headerTitle;
     padding-left: 1vw;
+    margin: 0;
 }
 
 #locationBox {
@@ -43,6 +43,7 @@ body {
     border: 0.2em solid white;
     width: fit-content;
     padding: 0.5em;
+    margin: 0;
 }
 
 #location {
@@ -58,6 +59,7 @@ body {
     border: 0.2em solid white;
     width: fit-content;
     padding: 0.5em;
+    margin: 0;
 }
 
 #cameraAngleTitle {
@@ -95,12 +97,14 @@ body {
     height: fit-content;
     padding: 10px;
     border: 0.4em solid rgb(210, 209, 209);
+    justify-items: center;
 }
 
 #movementButtonsTitle {
     grid-area: mov-title;
     text-align: center;
     padding-bottom: 10%;
+    width: fit-content;
 }
 
 .movementButton {
@@ -109,7 +113,7 @@ body {
     max-height: 3vw;
     min-width: 1vw;
     min-height: 1vw;
-    font-size: 2em;
+    font-size: 1.5em;
 }
 
 #forwardBtn {
@@ -159,25 +163,29 @@ body {
     color: white;
     margin-top: 10%;
     margin-bottom: 10%;
-    padding: 10px;
     width: 40%;
     height: fit-content;
+    padding: 10px;
     border: 0.4em solid rgb(210, 209, 209);
+    justify-items: center;
 }
 
 #cameraButtonsTitle {
     grid-area: cam-title;
     text-align: center;
     padding-bottom: 10%;
+    width: fit-content;
 }
 
 .cameraButton {
     cursor: pointer;
+    width: 50%;
+    height: 50%;
     max-width: 3vw;
     max-height: 3vw;
     min-width: 1vw;
     min-height: 1vw;
-    font-size: 2em;
+    font-size: 1.5em;
 }
 
 #cameraUpBtn {
