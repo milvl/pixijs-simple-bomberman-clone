@@ -78,19 +78,98 @@ document.addEventListener("DOMContentLoaded", function() {
         const [action, value] = continuousActions[id];
 
         element.addEventListener('mousedown', (e) => {
-            updateBuggy(action, value); // Execute action once immediately for single click
-            startContinuousAction(action, value); // Then start continuous action for holding down
+            updateBuggy(action, value); // execute action once immediately for single click
+            startContinuousAction(action, value); // then start continuous action for holding down
         });
         element.addEventListener('mouseup', stopContinuousAction);
         element.addEventListener('mouseleave', stopContinuousAction);
-
-        // For touch devices
-        element.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevents scrolling on touch devices
-            updateBuggy(action, value); // Execute action once immediately for single tap
-            startContinuousAction(action, value); // Then start continuous action for holding down
-        });
-        element.addEventListener('touchend', stopContinuousAction);
     });
     updateDisplay(); // initialize display
+
+    /**************************************************/
+    // on/off and restart
+    let isOn = !document.getElementById('systemOnOffStat').checked;
+
+    // on/off
+    document.getElementById('systemOnOffStat').addEventListener('change', function() {
+        isOn = !isOn;
+        if (isOn) {
+            document.getElementById('onLight').style.color = 'green';
+            document.getElementById('offLight').style.color = 'gray';
+        } else {
+            document.getElementById('onLight').style.color = 'gray';
+            document.getElementById('offLight').style.color = 'red';
+        }
+    });
+
+    // restart
+    document.getElementById('restartBttn').addEventListener('click', function() {
+        isOn = true;
+        document.getElementById('systemOnOffStat').checked = false;
+        document.getElementById('onLight').style.color = 'green';
+        document.getElementById('offLight').style.color = 'gray';
+    });
+
+    /**************************************************/
+    // on/off and HUD
+    let isHUDOn = !document.getElementById('HUDOnOffStat').checked;
+
+    // on/off
+    document.getElementById('HUDOnOffStat').addEventListener('change', function() {
+        isHUDOn = !isHUDOn;
+        if (isHUDOn) {
+            document.getElementById('onLightHUD').style.color = 'green';
+            document.getElementById('offLightHUD').style.color = 'gray';
+            let e;
+            e = document.getElementById('locationBox');
+            e.hidden = false;
+            e.style.display = 'grid';
+
+            e = document.getElementById('cameraAngleBox');
+            e.hidden = false;
+            e.style.display = 'grid';
+
+            e = document.getElementById('systemController');
+            e.hidden = false;
+            e.style.display = 'flex';
+
+            let movBttns = document.getElementsByClassName('movementButtons');
+            let camBttns = document.getElementsByClassName('cameraButtons');
+            for (let i = 0; i < movBttns.length; i++) {
+                movBttns[i].hidden = false;
+                movBttns[i].style.display = 'grid';
+            }
+            for (let i = 0; i < camBttns.length; i++) {
+                camBttns[i].hidden = false;
+                camBttns[i].style.display = 'grid';
+
+            }
+        } else {
+            document.getElementById('onLightHUD').style.color = 'gray';
+            document.getElementById('offLightHUD').style.color = 'red';
+            let e;
+            e = document.getElementById('locationBox');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('cameraAngleBox');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('systemController');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            let movBttns = document.getElementsByClassName('movementButtons');
+            let camBttns = document.getElementsByClassName('cameraButtons');
+            for (let i = 0; i < movBttns.length; i++) {
+                movBttns[i].hidden = true;
+                movBttns[i].style.display = 'none';
+            }
+            for (let i = 0; i < camBttns.length; i++) {
+                camBttns[i].hidden = true;
+                camBttns[i].style.display = 'none';
+            }
+        }
+    });
 });

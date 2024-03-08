@@ -23,9 +23,9 @@ body {
     grid-area: header;
     display: grid;
     grid-template-areas:
-    "headerTitle locationBox cameraAngleBox";
+    "headerTitle locationBox cameraAngleBox onOffController";
     grid-template-rows: 1fr;
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
     background-color: #333;
     color: white;
     align-items: center;
@@ -36,6 +36,8 @@ body {
     padding-left: 1vw;
     margin: 0;
 }
+
+/* ---------- LOCATION, CAMERA ANGLE, ON/OFF CONTROLLER ---------- */
 
 #locationBox {
     grid-area: locationBox;
@@ -72,6 +74,102 @@ body {
     padding-left: 0.5em;
 }
 
+#onOffController {
+    grid-area: onOffController;
+    display: grid;
+    grid-template-areas:
+    "systemController"
+    "HUDController";
+    grid-template-rows: 1fr 1fr;
+    grid-template-columns: 1fr;
+    align-items: center;
+    border: 0.2em solid white;
+    width: fit-content;
+}
+
+#systemController {
+    grid-area: systemController;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 0.5em;
+    padding-bottom: 0%;
+    margin: 0;
+}
+
+#HUDController {
+    grid-area: HUDController;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 0.5em;
+    padding-top: 0%;
+    margin: 0;
+}
+
+#onLight {
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    color: green;
+}
+
+#offLight {
+    margin-left: 0.5em;
+    margin-right: 2em;
+    color: gray;
+}
+
+/* ---------- switch ---------- */
+ .switch input {
+    position: absolute;
+    opacity: 0;
+  }
+  
+  .switch {
+    display: inline-block;
+    font-size: 20px; /* 1 */
+    height: 1em;
+    width: 2em;
+    background: #BDB9A6;
+    border-radius: 1em;
+  }
+  
+  .switch div {
+    height: 1em;
+    width: 1em;
+    border-radius: 1em;
+    background: #FFF;
+    box-shadow: 0 0.1em 0.3em rgba(0,0,0,0.3);
+    -webkit-transition: all 300ms;
+       -moz-transition: all 300ms;
+            transition: all 300ms;
+  }
+  
+  .switch input:checked + div {
+    -webkit-transform: translate3d(100%, 0, 0);
+       -moz-transform: translate3d(100%, 0, 0);
+            transform: translate3d(100%, 0, 0);
+  }
+
+#restartBttn {
+    cursor: pointer;
+    background-color: yellow;
+}
+
+#onLightHUD {
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    color: green;
+}
+
+#offLightHUD {
+    margin-left: 0.5em;
+    margin-right: 2em;
+    color: gray;
+}
+
 .leftBorder {
     display: flex;
     grid-area: leftBorder;
@@ -79,6 +177,8 @@ body {
     height: 100%;
     justify-content: center;
 }
+
+/* ---------- MOVEMENT BUTTONS ---------- */
 
 .movementButtons {
     display: grid;
@@ -151,6 +251,8 @@ body {
     justify-content: center;
 }
 
+/* ---------- CAMERA BUTTONS ---------- */
+
 .cameraButtons {
     display: grid;
     grid-template-areas: 
@@ -210,6 +312,8 @@ body {
     color: white;
     text-align: center;
 }
+
+/* ---------- MEDIA QUERIES ---------- */
 
 @media screen and (max-width: 600px) {
     .layout {
