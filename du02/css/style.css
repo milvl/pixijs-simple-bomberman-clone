@@ -108,12 +108,13 @@ body {
 }
 
 .movementButton {
+    display: inline;
+    padding: 0%;
     cursor: pointer;
-    max-width: 3vw;
-    max-height: 3vw;
-    min-width: 1vw;
-    min-height: 1vw;
-    font-size: 1.5em;
+    width: 2vw;
+    height: 2vw;
+    font-size: min(1.5em, 2vw);
+    text-align: center;
 }
 
 #forwardBtn {
@@ -178,14 +179,13 @@ body {
 }
 
 .cameraButton {
+    display: inline;
+    padding: 0%;
     cursor: pointer;
-    width: 50%;
-    height: 50%;
-    max-width: 3vw;
-    max-height: 3vw;
-    min-width: 1vw;
-    min-height: 1vw;
-    font-size: 1.5em;
+    width: 2vw;
+    height: 2vw;
+    font-size: min(1.5em, 2vw);
+    text-align: center;
 }
 
 #cameraUpBtn {
