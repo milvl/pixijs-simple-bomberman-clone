@@ -171,18 +171,23 @@ body {
 }
 
 .leftBorder {
-    display: flex;
+    display: grid;
+    grid-template-areas:
+    "movementButtons"
+    "accessPanel"
+    "accessPanel";
+    grid-template-rows: 2fr 1fr 1fr;
+    grid-template-columns: 1fr;
     grid-area: leftBorder;
     background-color: #555;
-    justify-content: center;
+    justify-items: center;
     align-items: center;
-    flex-direction: column;
-    flex-wrap: wrap;
 }
 
 /* ---------- MOVEMENT BUTTONS ---------- */
 
 .movementButtons {
+    grid-area: movementButtons;
     display: grid;
     grid-template-areas: 
     "mov-title mov-title mov-title"
@@ -236,6 +241,7 @@ body {
 }
 
 #accessPanel {
+    grid-area: accessPanel;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -298,18 +304,23 @@ body {
 }
 
 .rightBorder {
-    display: flex;
+    display: grid;
+    grid-template-areas:
+    "cameraButtons"
+    "sensorsBox"
+    "energySourceOptionsBox";
+    grid-template-rows: 2fr 1fr 1fr;
+    grid-template-columns: 1fr;
     grid-area: rightBorder;
     background-color: #555;
-    justify-content: center;
+    justify-items: center;
     align-items: center;
-    flex-direction: column;
-    flex-wrap: wrap;
 }
 
 /* ---------- CAMERA BUTTONS ---------- */
 
 .cameraButtons {
+    grid-area: cameraButtons;
     display: grid;
     grid-template-areas: 
     "cam-title cam-title cam-title"
@@ -363,6 +374,7 @@ body {
 }
 
 #sensorsBox {
+    grid-area: sensorsBox;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -385,6 +397,7 @@ body {
 }
 
 #energySourceOptionsBox {
+    grid-area: energySourceOptionsBox;
     display: flex;
     flex-direction: column;
     align-items: center;
