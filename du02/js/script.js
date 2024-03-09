@@ -133,6 +133,22 @@ document.addEventListener("DOMContentLoaded", function() {
             e.hidden = false;
             e.style.display = 'flex';
 
+            e = document.getElementById('sensorsBox');
+            e.hidden = false;
+            e.style.display = 'flex';
+
+            e = document.getElementById('energySourceOptionsBox');
+            e.hidden = false;
+            e.style.display = 'flex';
+
+            e = document.getElementById('infoBox');
+            e.hidden = false;
+            e.style.display = 'flex';
+
+            e = document.getElementById('statusBox');
+            e.hidden = false;
+            e.style.display = 'flex';
+
             let movBttns = document.getElementsByClassName('movementButtons');
             let camBttns = document.getElementsByClassName('cameraButtons');
             for (let i = 0; i < movBttns.length; i++) {
@@ -157,6 +173,22 @@ document.addEventListener("DOMContentLoaded", function() {
             e.style.display = 'none';
 
             e = document.getElementById('systemController');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('sensorsBox');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('energySourceOptionsBox');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('infoBox');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('statusBox');
             e.hidden = true;
             e.style.display = 'none';
 
