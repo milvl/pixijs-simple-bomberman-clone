@@ -149,6 +149,10 @@ document.addEventListener("DOMContentLoaded", function() {
             e.hidden = false;
             e.style.display = 'flex';
 
+            e = document.getElementById('accessPanel');
+            e.hidden = true;
+            e.style.display = 'flex';
+
             let movBttns = document.getElementsByClassName('movementButtons');
             let camBttns = document.getElementsByClassName('cameraButtons');
             for (let i = 0; i < movBttns.length; i++) {
@@ -189,6 +193,10 @@ document.addEventListener("DOMContentLoaded", function() {
             e.style.display = 'none';
 
             e = document.getElementById('statusBox');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('accessPanel');
             e.hidden = true;
             e.style.display = 'none';
 
