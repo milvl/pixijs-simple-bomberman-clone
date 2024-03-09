@@ -319,6 +319,7 @@ body {
     height: fit-content;
     border: 0.4em solid rgb(210, 209, 209);
     color: white;
+    margin-bottom: 2em;
 }
 
 #sensorsTitle {
@@ -328,6 +329,27 @@ body {
 }
 
 .sensor {
+    padding: 10px;
+}
+
+#energySourceOptionsBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    height: fit-content;
+    border: 0.4em solid rgb(210, 209, 209);
+    color: white;
+}
+
+#energySourceOptionsTitle {
+    padding: 10px;
+    padding-bottom: 0;
+    width: fit-content;
+}
+
+.energySource {
     padding: 10px;
 }
 
