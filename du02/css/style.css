@@ -353,9 +353,34 @@ body {
     padding: 10px;
 }
 
+/* <div class="footer">
+            <div id="infoBox">
+                <div id="infoTitle">Information:</div>
+                <textarea id="infoField" cols="100"></textarea>
+            </div>
+        </div> */
+
 .footer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
     grid-area: footer;
     background-color: #333;
     color: white;
-    text-align: center;
+    text-align: left;
+}
+
+#infoBox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    height: fit-content;
+    color: white;
+}
+
+#infoTitle {
+    padding: 10px;
+    width: fit-content;
 }
