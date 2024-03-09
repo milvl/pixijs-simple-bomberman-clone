@@ -353,34 +353,47 @@ body {
     padding: 10px;
 }
 
-/* <div class="footer">
-            <div id="infoBox">
-                <div id="infoTitle">Information:</div>
-                <textarea id="infoField" cols="100"></textarea>
-            </div>
-        </div> */
-
 .footer {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
     grid-area: footer;
+    display: grid;
+    grid-template-areas:
+    "infoBox statusBox";
+    grid-template-rows: 1fr;
+    grid-template-columns: 2fr 1fr;
     background-color: #333;
+    flex-wrap: wrap;
     color: white;
-    text-align: left;
+    align-items: center;
 }
 
 #infoBox {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: fit-content;
-    height: fit-content;
     color: white;
+    display: flex;
+    flex-wrap: wrap;
 }
 
 #infoTitle {
     padding: 10px;
     width: fit-content;
+}
+
+#statusBox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    height: fit-content;
+    border: 0.4em solid rgb(210, 209, 209);
+    color: white;
+}
+
+.status {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    justify-items: center;
+    padding: 10px;
+    /* auto text size */
+    font-size: min(1em, min(2vw, 2vh));
 }
