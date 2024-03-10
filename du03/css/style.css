@@ -1,0 +1,51 @@
+body {
+    padding: 20px;
+    font-family: Helvetica;
+  }
+  
+  .wrapper {
+    display: grid;
+    grid-template-columns:
+    "title . ."
+    "circle infoBox infoBox"
+    "r r r"
+    "g g g"
+    "b b b";
+    grid-gap: 10px;
+    justify-content: center;
+  }
+  
+  .box {
+    background-color: #20262e;
+    color: #fff;
+    border-radius: 3px;
+    padding: 20px;
+    font-size: 14px;
+  }
+  
+  .box d {
+    grid-area: "r";
+  }
+  
+  .box e {
+    grid-area: "g";
+  }
+  
+  .box f {
+    grid-area: "f";
+  }
+  
+  .dot {
+    height: 80px;
+    width: 80px;
+    background-color: #bbb;
+    border-radius: 50%;
+  }
+  
+  #circle {
+    grid-area: "circle";
+  }
+  
+  #infoBox {
+    grid-area: "infoBox";
+  }

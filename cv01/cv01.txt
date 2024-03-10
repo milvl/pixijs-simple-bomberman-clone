@@ -1,0 +1,14 @@
+UURcv 01 
+13.02.2024 
+==========
+
+- pouzivame https://jsfiddle.net/
+- uvod do nastroju pro vyvojare
+- uvod js:
+	- let, var rozdily
+	- pole (co se deje pri vypisu outofbounds, zapis na outofbounds)
+	- netypovost
+	- cykly (preskakovani undefined pri foreach)
+	- objekty (pristup k atributum, prepis, pridani)
+	- if porovnavani vysledky
+	- fce, metody (fce objektu)

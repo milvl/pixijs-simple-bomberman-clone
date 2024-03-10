@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGB picker</title>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="box a">Color Field</div>
+        <div id="circle" class="dot"></div>
+        <div id="infoBox">
+          <p id="rgb">187, 187, 187</p>
+          <p id="hex">#bbb</p>
+        </div>
+        <div class="box d">
+            Red
+            <button type="button" onClick="changeCol('r', -10)">-</button>
+            <input id="RValue" type="range" min="0" max="255" step="1" onInput="printData()" value=187>
+            <button type="button" onClick="changeCol('r', 10)">+</button>
+        </div>
+        <div class="box e">
+          Green
+          <button type="button" onClick="changeCol('g', -10)">-</button>
+            <input id="GValue" type="range" min="0" max="255" step="1" onInput="printData()" value=187>
+            <button type="button" onClick="changeCol('g', 10)">+</button>
+        </div>
+        
+        <div class="box f">
+          Blue
+          <button type="button" onClick="changeCol('b', -10)">-</button>
+            <input id="BValue" type="range" min="0" max="255" step="1" onInput="printData()" value=187>
+            <button type="button" onClick="changeCol('b', 10)">+</button>
+        </div>
+    </div>
+</body>
+</html>
