@@ -123,11 +123,15 @@ document.addEventListener("DOMContentLoaded", function() {
             let e;
             e = document.getElementById('locationBox');
             e.hidden = false;
-            e.style.display = 'grid';
+            e.style.display = 'flex';
 
             e = document.getElementById('cameraAngleBox');
             e.hidden = false;
-            e.style.display = 'grid';
+            e.style.display = 'flex';
+
+            e = document.getElementById('speedometerBox');
+            e.hidden = false;
+            e.style.display = 'flex';
 
             e = document.getElementById('systemController');
             e.hidden = false;
@@ -173,6 +177,10 @@ document.addEventListener("DOMContentLoaded", function() {
             e.style.display = 'none';
 
             e = document.getElementById('cameraAngleBox');
+            e.hidden = true;
+            e.style.display = 'none';
+
+            e = document.getElementById('speedometerBox');
             e.hidden = true;
             e.style.display = 'none';
 

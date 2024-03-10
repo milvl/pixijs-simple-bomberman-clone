@@ -23,9 +23,9 @@ body {
     grid-area: header;
     display: grid;
     grid-template-areas:
-    "headerTitle locationBox cameraAngleBox onOffController";
+    "headerTitle locationBox cameraAngleBox speedometerBox onOffController";
     grid-template-rows: 1fr;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
     background-color: #333;
     color: white;
     align-items: center;
@@ -70,6 +70,26 @@ body {
 }
 
 #cameraAngle {
+    text-align: left;
+    padding-left: 0.5em;
+}
+
+#speedometerBox {
+    grid-area: speedometerBox;
+    display: flex;
+    align-items: flex-start;
+    border: 0.2em solid white;
+    width: fit-content;
+    padding: 0.5em;
+    margin: 0;
+}
+
+#speedometerTitle {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
+
+#speedometer {
     text-align: left;
     padding-left: 0.5em;
 }
