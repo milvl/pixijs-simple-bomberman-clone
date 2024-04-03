@@ -1,0 +1,28 @@
+.boundingBox {
+    display: grid;
+    grid-template-areas:
+    "window"
+    "controllersBox";
+    grid-template-columns: 1fr;
+    grid-template-rows: 2fr 4fr;
+    width: 30vw;
+    height: 70vh;
+    padding-top: 10vh;
+    border: rgb(70, 70, 70) solid 1vw;
+    border-radius: 20px;
+}
+
+.window {
+    grid-area: window;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 4vh;
+}
+
+.controllersBox {
+    grid-area: controllersBox;
+    display: flex;
+    flex-direction: column;
+    gap: 8vh;
+    justify-content: center;
+}
