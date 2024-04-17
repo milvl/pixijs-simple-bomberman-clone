@@ -1,28 +1,52 @@
 .boundingBox {
     display: grid;
     grid-template-areas:
-    "window"
-    "controllersBox";
-    grid-template-columns: 1fr;
+    "window previousColorsWindows"
+    "controllersBox controllersBox";
+    grid-template-columns: 2fr 1fr;
     grid-template-rows: 2fr 4fr;
     width: 30vw;
     height: 70vh;
-    padding-top: 10vh;
+    padding-top: 5vh;
     border: rgb(70, 70, 70) solid 1vw;
     border-radius: 20px;
 }
 
 .window {
     grid-area: window;
+    display: flex;
     justify-content: center;
-    align-items: center;
-    padding-bottom: 4vh;
+    align-items: flex-start;
+    padding-left: 2vw;
+}
+
+.prevColorWindows {
+    grid-area: previousColorsWindows;
+    display: flex;
+    flex-direction: column;
+    gap: 2vh;
+    justify-content: center;
+    padding-right: 3vw;
 }
 
 .controllersBox {
     grid-area: controllersBox;
     display: flex;
     flex-direction: column;
-    gap: 8vh;
+    padding-bottom: 4vh;
+    gap: 4vh;
     justify-content: center;
+}
+
+#submitHistoryButton {
+    display: flex;
+    align-self: center;
+    justify-content: center;
+    align-items: center;
+    width: 80%;
+    height: 5vh;
+    cursor: pointer;
+    color: white;
+    background-color: rgb(70, 70, 70);
+    font-size: 2vh;
 }

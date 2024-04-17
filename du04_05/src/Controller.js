@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Controller.css';
 
 function Controller({ colorName, colorValue, updateColor }) {
     const [value, setValue] = useState(Number(colorValue));
+
+    // useEffect to sync local state with external changes
+    useEffect(() => {
+        setValue(Number(colorValue));
+    }, [colorValue]);
 
     /**
      * Increases the value of the color by 1.
