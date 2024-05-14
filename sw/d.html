@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debugging</title>
+    <script>
+        let anim = ['Debugging in progress', 'Debugging in progress.', 'Debugging in progress..', 'Debugging in progress...'];
+        let i = 0;
+        
+        setInterval(function() {
+            document.getElementById('anim').textContent = anim[i];
+            i = (i + 1) % anim.length; // This cycles i through 0-3
+        }, 500); // Update every 1000 milliseconds (1 second)
+    </script>
+</head>
+<body>
+    <h1 id="anim">Debugging in progress</h1>
+    
+</body>
+</html>

@@ -1,6 +1,6 @@
 const module_name_prefix = 'game_states.js - ';
 
-const GAME_STATES = {
+export const GAME_STATES = {
     NONE: -1,
     MAIN_MENU: 0,
     GAME_SESSION: 1,
@@ -18,37 +18,49 @@ const GAME_STATES_MAP = {
     LEADERBOARDS: {'id': 4, 'name': 'LEADERBOARDS'}
 };
 
+/**
+ * Represents the game state.
+ */
 export class GameState {
     /**
      * Creates a new GameState object.
      * @param {Window} window - The window object.
-     * @param {PIXI.Application} app - The PIXI application.
-     * @param {Object} sprites - The sprites object.
-     * @param {Object} audio - The audio object.
      */
-    constructor(window, app, sprites, audio) {
-        this.state = GAME_STATES.NONE;
+    constructor(window) {
+        this._state = GAME_STATES.NONE;
         this.window = window;
-        this.app = app;
-        this.sprites = sprites;
-        this.audio = audio;
 
-        this.initScene();
+        this.initState();
+    }
+
+    /**
+     * Gets the game state.
+     * @returns {Number} The game state.
+     */
+    get state() {
+        return this._state;
+    }
+
+    /**
+     * Gets the game state.
+     * @returns {Number} The game state.
+     */
+    set state(state) {
+        this._state = state;
     }
 
     /**
      * Sets up the scene based on the current game state.
      */
-    initScene() {
-        switch (this.state) {
+    initState() {
+        switch (this._state) {
             case GAME_STATES.NONE:
-                // drawMainMenu();
-                this.state = GAME_STATES.MAIN_MENU;
+                this._state = GAME_STATES.MAIN_MENU;
                 console.log(module_name_prefix + "Game state set to MAIN_MENU");
                 break;
             default:
-                console.error(module_name_prefix + "Invalid game state for setup: " + this.state);
-                throw new Error("Invalid game state for setup: " + this.state);
+                console.error(module_name_prefix + "Invalid game state for setup: " + this._state);
+                throw new Error("Invalid game state for setup: " + this._state);
         }
     }
 
@@ -57,7 +69,7 @@ export class GameState {
      */
     printGameState() {
         let current_state = undefined;
-        switch (this.state) {
+        switch (this._state) {
             case GAME_STATES.NONE:
                 current_state = GAME_STATES_MAP.NONE;
                 break;
@@ -77,14 +89,70 @@ export class GameState {
                 current_state = GAME_STATES_MAP.LEADERBOARDS;
                 break;
             default:
-                console.error(module_name_prefix + "Invalid game state: " + this.state);
+                current_state = "Invalid game state: " + this._state;
                 break;
         }
 
         console.log(module_name_prefix + "Current game state: " + JSON.stringify(current_state));
     }
 
-    render() {
-        console.log("GameState.render() called");
+    /**
+     * Sets the game state.
+     * @param {Number} state - The game state to set.
+     */
+    switchState(state) {
+        if (this._state === GAME_STATES.NONE) {
+            throw new Error("Logic Error: Current game state is NONE");
+        }
+        if (state === this._state) {
+            throw new Error("Logic Error: Switch called with same state");
+        }
+
+        // swithing to state:
+        switch (state) {
+            case GAME_STATES.NONE:
+                throw new Error("Logic Error: Cannot set game state to NONE");
+            
+            case GAME_STATES.MAIN_MENU:
+                this._state = GAME_STATES.MAIN_MENU;
+                console.log(module_name_prefix + "Game state set to MAIN_MENU");
+                break;
+            
+            case GAME_STATES.GAME_SESSION:
+                if (this._state !== GAME_STATES.MAIN_MENU) {
+                    throw new Error("Logic Error: Cannot set game state to GAME_SESSION from " + this._state);
+                }
+                this._state = GAME_STATES.GAME_SESSION;
+                console.log(module_name_prefix + "Game state set to GAME_SESSION");
+                break;
+            
+            case GAME_STATES.GAME_END:
+                if (this._state !== GAME_STATES.GAME_SESSION) {
+                    throw new Error("Logic Error: Cannot set game state to GAME_END from " + this._state);
+                }
+                this._state = GAME_STATES.GAME_END;
+                console.log(module_name_prefix + "Game state set to GAME_END");
+                break;
+            
+            case GAME_STATES.SETTINGS:
+                if (this._state !== GAME_STATES.MAIN_MENU) {
+                    throw new Error("Logic Error: Cannot set game state to SETTINGS from " + this._state);
+                }
+                this._state = GAME_STATES.SETTINGS;
+                console.log(module_name_prefix + "Game state set to SETTINGS");
+                break;
+            
+            case GAME_STATES.LEADERBOARDS:
+                if (this._state !== GAME_STATES.MAIN_MENU && this._state !== GAME_STATES.GAME_END) {
+                    throw new Error("Logic Error: Cannot set game state to LEADERBOARDS from " + this._state);
+                }
+                this._state = GAME_STATES.LEADERBOARDS;
+                console.log(module_name_prefix + "Game state set to LEADERBOARDS");
+                break;
+            
+            // should never happen
+            default:
+                throw new Error("Logic Error: Invalid game state: " + state);
+        }
     }
 }

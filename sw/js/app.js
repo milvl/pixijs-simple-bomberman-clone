@@ -189,7 +189,7 @@ export function debugPrintGame() {
 
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
 // create a new instance of a pixi application
-export const app = new PIXI.Application();
+export const app = new PIXI.Application();  // TODO remove export (debugging)
 await app.init(PIXI_INIT_CONFIG);
 
 // add the canvas to "game" div
@@ -204,7 +204,7 @@ let canvasHeight = app.renderer.height;
 await setup();
 // app.stage.addChild(SPRITES.bunny);
 
-const game = new Game(window, app, SPRITES, AUDIO, KEY_INPUTS);
+export const game = new Game(window, app, SPRITES, AUDIO, KEY_INPUTS);      // TODO remove export (debugging)
 console.log(module_name_prefix, 'Game:', game);
 
 // PIXI's ticker for the game loop
@@ -215,6 +215,7 @@ window.app = app;
 window.test = debugTest;
 window.debugPrintGameState = debugPrintGameState;
 window.debugPrintGame = debugPrintGame;
+window.game = game;
 
 /**
  * Debug function
