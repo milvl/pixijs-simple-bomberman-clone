@@ -1,5 +1,5 @@
 import { GameState, GAME_STATES } from "./game_states.js";
-// import { MainMenuDrawingManager } from "./drawing_manager.js";
+import { MainMenuDrawingManager, SettingsDrawingManager } from "./drawing_manager_menus.js";
 
 const module_name_prefix = 'game.js - ';
 
@@ -68,10 +68,13 @@ export class Game {
         this.sprites = sprites;
         this.audio = audio;
         this.key_inputs = key_inputs;
-        this.settings = DEFAULT_SETTINGS;
+
+        this.settings = { ...DEFAULT_SETTINGS};
         this.gameState = new GameState(this.window);
         this.screenContent = null;
         this.drawingManager = null;
+        this.screenWidth = this.app.screen.width;
+        this.screenHeight = this.app.screen.height;
     }
 
     /**
@@ -147,8 +150,8 @@ export class Game {
     #handleMainMenuUpdate() {
         if (this.screenContent == null) {
             this.#initMainMenu();
-            // this.drawingManager = new MainMenuDrawingManager(this.app, this.sprites, this.screenContent);
-            // this.drawingManager.draw();
+            this.drawingManager = new MainMenuDrawingManager(this.app, this.sprites, this.screenContent);
+            this.drawingManager.draw();
         }
 
         let switchTo = null;
@@ -173,27 +176,19 @@ export class Game {
                 }
                 if (switchTo != null) {
                     this.#cleanUpMenu();
-                    // this.drawingManager.cleanUp(); TODO - implement cleanUp function
-                    // this.drawingManager = null;
+                    this.drawingManager.cleanUp();
+                    this.drawingManager = null;
                     this.gameState.switchState(switchTo);
                     switchTo = null;
                 }
             }
             // otherwise, draw the main menu updated content
             else {
-                // this.#drawMainMenu(this.screenContent);
+                this.drawingManager.redraw();
                 console.log(module_name_prefix, 'Selected:', this.screenContent.options[this.screenContent.selected]);
                 this.screenContent.updated = false;
             }
         }
-    }
-
-    /**
-     * Returns the text for the on/off toggle.
-     * @param {String} prefix - The prefix for the text.
-     */
-    #onOffToggleText(prefix, value) {
-        return prefix + (value ? 'On' : 'Off');
     }
 
     /**
@@ -250,6 +245,7 @@ export class Game {
     #handleSettingsUpdate() {
         if (this.screenContent === null) {
             this.#initSettings();
+            this.drawingManager = new SettingsDrawingManager(this.app, this.sprites, this.screenContent);
         }
 
         let switchToMainMenu = false;
@@ -268,13 +264,14 @@ export class Game {
                 }
                 if (switchToMainMenu) {
                     this.#cleanUpMenu();
+                    this.drawingManager.cleanUp();
                     this.gameState.switchState(GAME_STATES.MAIN_MENU);
                     switchToMainMenu = false;
                 }
             }
             // otherwise, draw the settings updated content
             else {
-                // this.drawSettings(this.screenContent); to be implemented
+                this.drawingManager.redraw();
                 console.log(module_name_prefix, 'Selected:', this.screenContent.options[this.screenContent.selected]);
                 this.screenContent.updated = false;
             }
@@ -285,6 +282,14 @@ export class Game {
      * Handles updating the game.
      */
     update() {
+        if (this.app.screen.width !== this.screenWidth || this.app.screen.height !== this.screenHeight) {
+            this.screenWidth = this.app.screen.width;
+            this.screenHeight = this.app.screen.height;
+            if (this.drawingManager != null) {
+                this.drawingManager.redraw();
+            }
+        }
+
         switch (this.gameState.state) {
             case GAME_STATES.MAIN_MENU:
                 this.#handleMainMenuUpdate();

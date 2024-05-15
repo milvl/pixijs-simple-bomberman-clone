@@ -187,6 +187,13 @@ export function debugPrintGame() {
     console.log(module_name_prefix, 'Game:', game);
 }
 
+export function debugPrintScreen() {
+    console.log(module_name_prefix, 'Screen:', app.screen);
+    console.log(module_name_prefix, 'Canvas:', app.canvas);
+    console.log(module_name_prefix, 'Renderer:', app.renderer);
+    console.log(module_name_prefix, 'Stage:', app.stage);
+}
+
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
 // create a new instance of a pixi application
 export const app = new PIXI.Application();  // TODO remove export (debugging)
@@ -197,9 +204,6 @@ $("#game").append(app.canvas);
 
 // resize the canvas on window change
 window.addEventListener('resize', () => resizeCanvas(app));
-
-let canvasWidth = app.renderer.width;
-let canvasHeight = app.renderer.height;
 
 await setup();
 // app.stage.addChild(SPRITES.bunny);
@@ -216,6 +220,7 @@ window.test = debugTest;
 window.debugPrintGameState = debugPrintGameState;
 window.debugPrintGame = debugPrintGame;
 window.game = game;
+window.debugPrintScreen = debugPrintScreen;
 
 /**
  * Debug function
