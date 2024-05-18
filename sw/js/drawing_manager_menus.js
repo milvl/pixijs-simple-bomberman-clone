@@ -1,13 +1,6 @@
-const module_name_prefix = "drawing_manager.js - ";
+import { HEX_COLOR_CODES } from "./color_codes.js";
 
-const HEX_COLOR_CODES = {
-    RED: 0xFF0000,
-    GREEN: 0x00FF00,
-    BLUE: 0x0000FF,
-    YELLOW: 0xFFFF00,
-    WHITE: 0xFFFFFF,
-    BLACK: 0x000001
-};
+const module_name_prefix = "drawing_manager.js - ";
 
 const TEXT_RECT_RADIUS = 15;
 const TEXT_RECT_FONT_SIZE_SCALE = 1/2;
@@ -226,6 +219,9 @@ export class SettingsDrawingManager {
         this.app.stage.addChild(background);
     }
 
+    /**
+     * Draws the title of the settings.
+     */
     #drawTitle() {
         let titleString = getStringWithSafeMargin(this.TITLE_STRING);
         let titleRect = new PIXI.Graphics();
@@ -283,6 +279,9 @@ export class SettingsDrawingManager {
         return prefix + (value ? 'On' : 'Off');
     }
 
+    /**
+     * Draws the options of the settings.
+     */
     #drawOptions() {
         let x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_SCALE)) / 2;
         let y = undefined;

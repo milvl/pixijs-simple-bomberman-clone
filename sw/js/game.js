@@ -1,7 +1,11 @@
 import { GameState, GAME_STATES } from "./game_states.js";
 import { MainMenuDrawingManager, SettingsDrawingManager } from "./drawing_manager_menus.js";
+import { Arena } from "./game_session.js";
 
 const module_name_prefix = 'game.js - ';
+
+const ARENA_ROWS = 11;
+const ARENA_COLS = 21;
 
 const DEFAULT_SETTINGS = {
     lives: 3,
@@ -191,6 +195,19 @@ export class Game {
         }
     }
 
+    #initGameSession() {
+        this.screenContent = { updated: true };
+        let arena = new Arena(this.app, ARENA_ROWS, ARENA_COLS);
+        arena.draw();
+    }
+
+    #handleGameSessionUpdate() {
+        if (this.screenContent == null) {
+            this.#initGameSession();
+        }
+        // throw new Error('Game session to be implemented.');
+    }
+
     /**
      * Returns the settings content.
      * @returns {Object} The settings content.
@@ -295,8 +312,7 @@ export class Game {
                 this.#handleMainMenuUpdate();
                 break;
             case GAME_STATES.GAME_SESSION:
-                console.error(module_name_prefix, 'Game session to be implemented.');
-                throw new Error('Game session to be implemented.');
+                this.#handleGameSessionUpdate();
                 break;
             case GAME_STATES.GAME_OVER:
                 console.error(module_name_prefix, 'Game over to be implemented.');

@@ -1,0 +1,13 @@
+export const HEX_COLOR_CODES = {
+    RED: 0xFF0000,
+    GREEN: 0x00FF00,
+    BLUE: 0x0000FF,
+    YELLOW: 0xFFFF00,
+    WHITE: 0xFFFFFF,
+    BLACK: 0x000001,
+    // GRAY: 0x808080,
+    GRAY: 0xA9A9A9,
+    ORANGE: 0xFFA500,
+    PURPLE: 0x800080,
+    BROWN: 0xA52A2A,
+};

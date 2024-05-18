@@ -7,6 +7,8 @@ let module_name_prefix = 'app.js - ';
 
 const WIDTH_SCALE_GAME_DIV = 0.7;
 const HEIGHT_SCALE_GAME_DIV = 0.8;      //TODO - automatic scaling based on screen size
+// const WIDTH_SCALE_GAME_DIV = 1;
+// const HEIGHT_SCALE_GAME_DIV = 1;
 
 const SPRITES = {};
 const AUDIO = {};
