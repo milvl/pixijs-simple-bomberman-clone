@@ -1,0 +1,37 @@
+.MuiTreeItem-iconContainer {
+    width: fit-content !important;
+}
+
+.FileSystemNavigator {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.TreeViewSection {
+    flex: 1;
+    /*width: 25%;*/
+    height: 100%;
+    padding-left: 0.5vw;
+    border-right: 1px solid #ccc; /* separation line */
+    overflow: auto; /* enables scrolling if the tree grows larger than the view */
+}
+
+.ContentViewSection {
+    flex: 4;
+    overflow: auto; /* allows scrolling of content */
+    padding: 20px;
+}
+
+.MuiToolbar-root {
+    padding-left: 0 !important;
+}
+
+/* to make the text in the textfield black */
+#outlined-multiline-static {
+    -webkit-text-fill-color: black;
+}
+
+/*.MuiTreeItem-root {*/
+/*    padding-left: 1vw !important;*/
+/*}*/
