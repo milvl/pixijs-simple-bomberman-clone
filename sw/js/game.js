@@ -1,6 +1,6 @@
 import { GameState, GAME_STATES } from "./game_states.js";
 import { MainMenuDrawingManager, SettingsDrawingManager } from "./drawing_manager_menus.js";
-import { Arena } from "./game_session.js";
+import { GameSessionManager } from "./game_session.js";
 
 const module_name_prefix = 'game.js - ';
 
@@ -65,13 +65,16 @@ export class Game {
      * @param {Object} sprites - The sprites object.
      * @param {Object} audio - The audio object.
      * @param {Object} key_inputs - The key inputs object.
+     * @param {Object} windowChange - The window change object.
+     * @returns {Game} The new Game object.
      */
-    constructor(window, app, sprites, audio, key_inputs) {
+    constructor(window, app, sprites, audio, key_inputs, windowChange) {
         this.window = window;
         this.app = app;
         this.sprites = sprites;
         this.audio = audio;
         this.key_inputs = key_inputs;
+        this.windowChange = windowChange;
 
         this.settings = { ...DEFAULT_SETTINGS};
         this.gameState = new GameState(this.window);
@@ -195,16 +198,17 @@ export class Game {
         }
     }
 
-    #initGameSession() {
-        this.screenContent = { updated: true };
-        let arena = new Arena(this.app, ARENA_ROWS, ARENA_COLS);
-        arena.draw();
+    #initGameSession(delta) {
+        this.screenContent = {};
+        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.sprites, this.audio, ARENA_ROWS, ARENA_COLS);  //TODO Sprites, audio, key_inputs
+        this.drawingManager.start(delta);
     }
 
-    #handleGameSessionUpdate() {
-        if (this.screenContent == null) {
+    #handleGameSessionUpdate(delta) {
+        if (this.screenContent === null) {
             this.#initGameSession();
         }
+        this.drawingManager.update(delta);  //TODO delta
         // throw new Error('Game session to be implemented.');
     }
 
@@ -298,13 +302,10 @@ export class Game {
     /**
      * Handles updating the game.
      */
-    update() {
-        if (this.app.screen.width !== this.screenWidth || this.app.screen.height !== this.screenHeight) {
-            this.screenWidth = this.app.screen.width;
-            this.screenHeight = this.app.screen.height;
-            if (this.drawingManager != null) {
-                this.drawingManager.redraw();
-            }
+    update(delta) {
+        if (this.windowChange.resized) {
+            this.drawingManager.redraw();
+            this.windowChange.resized = false;
         }
 
         switch (this.gameState.state) {
@@ -312,7 +313,7 @@ export class Game {
                 this.#handleMainMenuUpdate();
                 break;
             case GAME_STATES.GAME_SESSION:
-                this.#handleGameSessionUpdate();
+                this.#handleGameSessionUpdate(delta);
                 break;
             case GAME_STATES.GAME_OVER:
                 console.error(module_name_prefix, 'Game over to be implemented.');

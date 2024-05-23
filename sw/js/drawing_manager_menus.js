@@ -24,11 +24,11 @@ function getStringWithSafeMargin(text) {
      * @returns {PIXI.Text} The PIXI.Text object.
      */
 function getBespokeRectText(text, x, y, logoRectWidth, logoRectHeight) {
-    let logoText = new PIXI.Text(text, {
+    let logoText = new PIXI.Text({'text': text, 'style': {
         fontFamily: 'Arial',
         fontSize: logoRectHeight * TEXT_RECT_FONT_SIZE_SCALE,
         fill: HEX_COLOR_CODES.BLACK,  // text color
-        align: 'center'
+        align: 'center'}
     });
     while (logoText.width > logoRectWidth) {
         logoText.style.fontSize -= 1;   // decrease font size until it fits (expects small num of iterations)
@@ -71,9 +71,8 @@ export class MainMenuDrawingManager {
      */
     #drawBackground() {
         const background = new PIXI.Graphics();
-        background.beginFill(HEX_COLOR_CODES.BLACK);
-        background.drawRect(0, 0, this.app.screen.width, this.app.screen.height);
-        background.endFill();
+        background.fill(HEX_COLOR_CODES.BLACK);
+        background.rect(0, 0, this.app.screen.width, this.app.screen.height);
         this.app.stage.addChild(background);
     }
 
@@ -89,13 +88,12 @@ export class MainMenuDrawingManager {
         let y = this.app.screen.height * this.LOGO_Y_OFFSET_SCALE;
         let logoRectWidth = this.app.screen.width * this.LOGO_WIDTH_SCALE;
         let logoRectHeight = this.app.screen.height * this.LOGO_HEIGHT_SCALE;
-        logoRect.beginFill(HEX_COLOR_CODES.WHITE);
-        logoRect.drawRoundedRect(x, 
+        logoRect.roundRect(x, 
                                  y, 
                                  logoRectWidth,
                                  logoRectHeight,
                                  this.TEXT_RECT_RADIUS);
-        logoRect.endFill();
+        logoRect.fill(HEX_COLOR_CODES.WHITE);
         this.app.stage.addChild(logoRect);
 
         // text
@@ -114,13 +112,12 @@ export class MainMenuDrawingManager {
             let offset_from_logo = this.app.screen.height * this.LOGO_Y_OFFSET_SCALE * 2 + (this.app.screen.height * this.LOGO_HEIGHT_SCALE);
             let y = offset_from_logo + (this.app.screen.height * this.BUTTON_HEIGHT_SCALE * i * 2);
             let button = new PIXI.Graphics();
-            button.beginFill(HEX_COLOR_CODES.WHITE);
-            button.drawRoundedRect(x, 
+            button.roundRect(x, 
                                    y, 
                                    button_width, 
                                    button_height, 
                                    this.TEXT_RECT_RADIUS);
-            button.endFill();
+            button.fill(HEX_COLOR_CODES.WHITE);
             this.app.stage.addChild(button);
             
             // text
@@ -131,7 +128,6 @@ export class MainMenuDrawingManager {
             // add >> << around button if selected
             if (i === this.screenContent.selected) {
                 let left_arrow = new PIXI.Graphics();
-                left_arrow.beginFill(HEX_COLOR_CODES.WHITE);
                 let polygon_points = [x - button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X,
                                       y + button_height * this.SELECTE_MARKER_LOCATION_TO_BUTTON_SCALE_Y,       // middle of button
                                       x - (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
@@ -139,11 +135,10 @@ export class MainMenuDrawingManager {
                                       x - (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
                                       y + button_height];                                                       // bottom of button
                 left_arrow.drawPolygon(polygon_points);
-                left_arrow.endFill();
+                left_arrow.fill(HEX_COLOR_CODES.WHITE);
                 this.app.stage.addChild(left_arrow);
 
                 let right_arrow = new PIXI.Graphics();
-                right_arrow.beginFill(HEX_COLOR_CODES.WHITE);
                 polygon_points = [x + button_width + button_width* this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X,
                                   y + button_height * this.SELECTE_MARKER_LOCATION_TO_BUTTON_SCALE_Y,       // middle of button
                                   x + button_width + (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
@@ -151,7 +146,7 @@ export class MainMenuDrawingManager {
                                   x + button_width + (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
                                   y + button_height];                                                       // bottom of button
                 right_arrow.drawPolygon(polygon_points);
-                right_arrow.endFill();
+                right_arrow.fill(HEX_COLOR_CODES.WHITE);
                 this.app.stage.addChild(right_arrow);
             }
         }
@@ -249,16 +244,18 @@ export class SettingsDrawingManager {
      */
     #getFontSize() {
         let fontSize = 1;
-        let text = new PIXI.Text('M', {
+        let longest_option = getStringWithSafeMargin(this.screenContent.options.reduce((a, b) => a.length > b.length ? a : b) + 'Off');
+        let text = new PIXI.Text({text: longest_option, style: {
             fontFamily: 'Arial',
             fontSize: fontSize,
             fill: HEX_COLOR_CODES.BLACK,  // text color
-        });
+        }});
         while (text.height < this.app.screen.height * this.OPTIONS_TEXT_HEIGHT_SCALE) {
             fontSize++;
             text.style.fontSize = fontSize;
         }
-        while (text.width > this.app.screen.width * this.OPTIONS_TEXT_WIDTH_SCALE) {
+        fontSize--;
+        while (text.width > (this.app.screen.width * this.TITLE_WIDTH_SCALE) - text.height) {
             fontSize--;
             text.style.fontSize = fontSize;
         }

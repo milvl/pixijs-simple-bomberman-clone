@@ -31,7 +31,7 @@ const manifest = {
  */
 const PIXI_INIT_CONFIG = { 
     width: window.innerWidth * WIDTH_SCALE_GAME_DIV, 
-    height: window.innerHeight * HEIGHT_SCALE_GAME_DIV 
+    height: window.innerHeight * HEIGHT_SCALE_GAME_DIV, 
 }
 
 /**
@@ -53,13 +53,23 @@ async function prepareAssets() {
 /**
  * Resizes the canvas to fit the window.
  * @param {PIXI.Application} app - The PIXI application to resize.
+ * @param {Object} windowChange - The window change object.
  */
-function resizeCanvas(app) {
-    app.renderer.resize(window.innerWidth * WIDTH_SCALE_GAME_DIV, window.innerHeight * HEIGHT_SCALE_GAME_DIV);
+function resizeCanvas(app, windowChange) {
+    let newWidth = WIDTH_SCALE_GAME_DIV * window.innerWidth;
+    let newHeight = HEIGHT_SCALE_GAME_DIV * window.innerHeight;
+
+    if (newWidth < newHeight) {
+        newWidth = Math.min(newWidth, newHeight);
+        newHeight = newWidth * HEIGHT_SCALE_GAME_DIV;
+    }
+
+    app.renderer.resize(newWidth, newHeight);
     $('#game').css({
-        width: window.innerWidth * WIDTH_SCALE_GAME_DIV,
-        height: window.innerHeight * HEIGHT_SCALE_GAME_DIV
+        width: newWidth,
+        height: newHeight
     });
+    windowChange.resized = true;
 }
 
 /**
@@ -197,6 +207,10 @@ export function debugPrintScreen() {
 }
 
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
+let windowChange = {
+    resize: false
+};
+
 // create a new instance of a pixi application
 export const app = new PIXI.Application();  // TODO remove export (debugging)
 await app.init(PIXI_INIT_CONFIG);
@@ -205,12 +219,12 @@ await app.init(PIXI_INIT_CONFIG);
 $("#game").append(app.canvas);
 
 // resize the canvas on window change
-window.addEventListener('resize', () => resizeCanvas(app));
+window.addEventListener('resize', () => resizeCanvas(app, windowChange));
 
 await setup();
 // app.stage.addChild(SPRITES.bunny);
 
-export const game = new Game(window, app, SPRITES, AUDIO, KEY_INPUTS);      // TODO remove export (debugging)
+export const game = new Game(window, app, SPRITES, AUDIO, KEY_INPUTS, windowChange);      // TODO remove export (debugging)
 console.log(module_name_prefix, 'Game:', game);
 
 // PIXI's ticker for the game loop
