@@ -200,7 +200,7 @@ export class Game {
 
     #initGameSession(delta) {
         this.screenContent = {};
-        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.sprites, this.audio, ARENA_ROWS, ARENA_COLS);  //TODO Sprites, audio, key_inputs
+        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.sprites, this.audio, this.key_inputs, ARENA_ROWS, ARENA_COLS);  //TODO Sprites, audio, key_inputs
         this.drawingManager.start(delta);
     }
 
@@ -208,7 +208,7 @@ export class Game {
         if (this.screenContent === null) {
             this.#initGameSession();
         }
-        this.drawingManager.update(delta);  //TODO delta
+        this.drawingManager.update(delta);
         // throw new Error('Game session to be implemented.');
     }
 

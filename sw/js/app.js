@@ -5,10 +5,9 @@ import { Game } from './game.js';
 
 let module_name_prefix = 'app.js - ';
 
-const WIDTH_SCALE_GAME_DIV = 0.7;
-const HEIGHT_SCALE_GAME_DIV = 0.8;      //TODO - automatic scaling based on screen size
-// const WIDTH_SCALE_GAME_DIV = 1;
-// const HEIGHT_SCALE_GAME_DIV = 1;
+const RATIO_WIDTH = 21;
+const RATIO_HEIGHT = 11 * 1.2;      // 21:11 aspect ratio with hud taking up 20% of the height // TODO better way to calculate this
+const GAME_WINDOW_SCALE = 0.8;
 
 const SPRITES = {};
 const AUDIO = {};
@@ -30,8 +29,8 @@ const manifest = {
  * Config for PIXI application
  */
 const PIXI_INIT_CONFIG = { 
-    width: window.innerWidth * WIDTH_SCALE_GAME_DIV, 
-    height: window.innerHeight * HEIGHT_SCALE_GAME_DIV, 
+    width: getProperDimensions().width,
+    height: getProperDimensions().height, 
 }
 
 /**
@@ -51,24 +50,57 @@ async function prepareAssets() {
 }
 
 /**
+ * Returns the proper dimensions for the game window.
+ * @returns {Object} The proper dimensions for the game window.
+ * @throws {Error} If there was an error getting the proper dimensions.
+ */
+function getProperDimensions() {
+    // find the limiting dimension
+    const viewportAspectRatio = window.innerWidth / window.innerHeight;
+    const gameAspectRatio = RATIO_WIDTH / RATIO_HEIGHT;
+
+    let width = null;
+    let height = null;
+
+    // if the limiting dimension is the height
+    if (viewportAspectRatio >= gameAspectRatio) {
+        const scale_factor = window.innerHeight / RATIO_HEIGHT;
+        height = window.innerHeight;
+        width = RATIO_WIDTH * scale_factor;
+
+        if (height >= window.screen.height * GAME_WINDOW_SCALE) {
+            width *= GAME_WINDOW_SCALE;
+            height *= GAME_WINDOW_SCALE;
+        }
+    }
+    // if the limiting dimension is the width
+    else {
+        const scale_factor = window.innerWidth / RATIO_WIDTH;
+        width = window.innerWidth;
+        height = RATIO_HEIGHT * scale_factor;
+
+        if (width >= window.screen.width * GAME_WINDOW_SCALE) {
+            width *= GAME_WINDOW_SCALE;
+            height *= GAME_WINDOW_SCALE;
+        }
+    }
+    
+    return { width, height };
+}
+
+/**
  * Resizes the canvas to fit the window.
  * @param {PIXI.Application} app - The PIXI application to resize.
  * @param {Object} windowChange - The window change object.
  */
 function resizeCanvas(app, windowChange) {
-    let newWidth = WIDTH_SCALE_GAME_DIV * window.innerWidth;
-    let newHeight = HEIGHT_SCALE_GAME_DIV * window.innerHeight;
+    const { width, height } = getProperDimensions();
 
-    if (newWidth < newHeight) {
-        newWidth = Math.min(newWidth, newHeight);
-        newHeight = newWidth * HEIGHT_SCALE_GAME_DIV;
-    }
+    // resize the canvas
+    app.renderer.resize(width, height);
+    $("#game").css("width", width);
+    $("#game").css("height", height);
 
-    app.renderer.resize(newWidth, newHeight);
-    $('#game').css({
-        width: newWidth,
-        height: newHeight
-    });
     windowChange.resized = true;
 }
 
@@ -208,7 +240,7 @@ export function debugPrintScreen() {
 
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
 let windowChange = {
-    resize: false
+    resized: false
 };
 
 // create a new instance of a pixi application
