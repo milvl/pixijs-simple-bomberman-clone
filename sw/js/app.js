@@ -9,17 +9,43 @@ const RATIO_WIDTH = 21;
 const RATIO_HEIGHT = 11 * 1.2;      // 21:11 aspect ratio with hud taking up 20% of the height // TODO better way to calculate this
 const GAME_WINDOW_SCALE = 0.8;
 
-const SPRITES = {};
+const TEXTURES = {};
 const AUDIO = {};
 const KEY_INPUTS = {};
 
 const manifest = {
     bundles: [
         {
-            name: "sprites",
+            name: "textures",
             assets: [
                 { alias: "bunny", src: "https://pixijs.com/assets/bunny.png" },
-                { alias: "bomb", src: "./img/bomb.png" }
+                { alias: "bomb", src: "./img/bomb.png" },
+                { alias: "bomb_ignited", src: "./img/bomb_ignited.png" },
+                { alias: "explosion_tileset", src: "./img/explosion_tileset.png" },
+                { alias: "wall", src: "./img/wall.png" },
+                { alias: "door", src: "./img/door.png" },
+                { alias: "ghost1", src: "./img/ghost1.png" },
+                { alias: "ghost2", src: "./img/ghost2.png" },
+                { alias: "ghost3", src: "./img/ghost3.png" },
+                { alias: "ghost4", src: "./img/ghost4.png" },
+                { alias: "ghost5", src: "./img/ghost5.png" },
+                { alias: "ghost6", src: "./img/ghost6.png" },
+            ]
+        },
+        {
+            name: "audio",
+            assets: [
+                { alias: "cursor", src: "./audio/cursor.ogg"},
+                { alias: "cursor_submit", src: "./audio/cursor_submit.ogg"},
+                { alias: "door_appeared", src: "./audio/door_appeared.ogg"},
+                { alias: "explosion", src: "./audio/explosion.ogg"},
+            ]
+        },
+        {
+            name: "fonts",
+            assets: [
+                { alias: "PixelFontTitle", src: "./fonts/Emulogic-zrEw.ttf"},
+                { alias: "PixelFontText", src: "./fonts/PressStart2P-vaV7.ttf"}
             ]
         }
     ]
@@ -114,25 +140,25 @@ async function prepareGameAssets() {
     console.log(module_name_prefix, 'Preparing game assets...');
     const assets = await prepareAssets();
     console.log(module_name_prefix, 'Assets:', assets);
-    loadSprites(assets, SPRITES);
-    // loadAudio(assets, AUDIO);
+    loadTextures(assets, TEXTURES);
+    loadAudio(assets, AUDIO);
 
     console.log(module_name_prefix, 'Game assets prepared.');
-    console.log(module_name_prefix, 'Sprites:', SPRITES);
+    console.log(module_name_prefix, 'Textures:', TEXTURES);
     console.log(module_name_prefix, 'Audio:', AUDIO);
 }
 
 /**
- * Loads sprites from the assets object into the sprites object.
- * @param {Object} assets - The assets object containing the sprites.
- * @param {Object} sprites - The sprites object to load the sprites into.
+ * Loads textures from the assets object into the texture object.
+ * @param {Object} assets - The assets object containing the textures.
+ * @param {Object} textures - The texture object to load the textures into.
  */
-function loadSprites(assets, sprites) {
-    console.log(module_name_prefix, 'Loading sprites:', assets);
-    for (let sprite in assets.sprites) {
-        sprites[sprite] = PIXI.Sprite.from(assets.sprites[sprite]);
+function loadTextures(assets, textures) {
+    console.log(module_name_prefix, 'Loading textures:', assets);
+    for (let texture in assets.textures) {
+        textures[texture] = PIXI.Texture.from(texture);
     }
-    console.log(module_name_prefix, 'Loaded sprites:', sprites);
+    console.log(module_name_prefix, 'Loaded textures:', textures);
 }
 
 /** 
@@ -140,10 +166,10 @@ function loadSprites(assets, sprites) {
  * @param {Object} assets - The assets object containing the audio.
  * @param {Object} audio - The audio object to load the audio into.
  */
-function loadAudio(assets, audio) {     // TODO - implement audio loading
+function loadAudio(assets, audio) {
     console.log(module_name_prefix, 'Loading audio:', assets);
     for (let sound in assets.audio) {
-        audio[sound] = PIXI.sound.Sound.from(assets.audio[sound]);
+        audio[sound] = PIXI.sound.Sound.from(sound);
     }
     console.log(module_name_prefix, 'Loaded audio:', audio);
 }
@@ -209,7 +235,7 @@ async function setup() {
     try {
         await prepareGameAssets();
     } catch (error) {
-        console.error(module_name_prefix, 'Failed to load sprites:', error);;
+        console.error(module_name_prefix, 'Failed to load textures:', error);;
     }
 
     // setup keyboard input
@@ -239,7 +265,10 @@ export function debugPrintScreen() {
 }
 
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
-let windowChange = {
+// prompt the user to click to start the game (audio context)
+// alert('Click anywhere to start the sound.');  TODO uncomment this line
+
+const windowChange = {
     resized: false
 };
 
@@ -254,9 +283,8 @@ $("#game").append(app.canvas);
 window.addEventListener('resize', () => resizeCanvas(app, windowChange));
 
 await setup();
-// app.stage.addChild(SPRITES.bunny);
 
-export const game = new Game(window, app, SPRITES, AUDIO, KEY_INPUTS, windowChange);      // TODO remove export (debugging)
+export const game = new Game(window, app, TEXTURES, AUDIO, KEY_INPUTS, windowChange);      // TODO remove export (debugging)
 console.log(module_name_prefix, 'Game:', game);
 
 // PIXI's ticker for the game loop

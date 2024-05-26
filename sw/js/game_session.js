@@ -3,16 +3,20 @@ import { HEX_COLOR_CODES } from "./color_codes.js";
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
 
+const TITLE_FONT_FAMILY = "Emulogic zrEw";
+const TEXT_FONT_FAMILY = "Pressstart2p Vav7";
+
 const SCALE_WIDTH_ARENA_TO_SCREEN = 1;
 const SCALE_HEIGHT_ARENA_TO_SCREEN = 0.8;
 const SCALE_HEIGHT_HUD_TO_SCREEN = 0.2;
-const SCALE_HEIGHT_HUD_TEXT_TO_HUD = 0.8;
+// const SCALE_HEIGHT_HUD_TEXT_TO_HUD = 0.8;
+const SCALE_HEIGHT_HUD_TEXT_TO_HUD = 0.5;   // TODO NOTE: weird chosen font scaling issue
 const SCALE_WIDTH_HUD_TEXT_TO_HUD = 1/3;
 const SCALE_RADIUS_HUD_ROUND_RECT_TO_HEIGHT = 0.3;
 
-const SCALE_WIDTH_OFFSET_TIME_TEXT_TO_HUD = 1/10;
+const SCALE_WIDTH_OFFSET_TIME_TEXT_TO_HUD = 1/8;
 const SCALE_WIDTH_OFFSET_SCORE_TEXT_TO_HUD = 1/2;
-const SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD = 9/10;
+const SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD = 7/8;
 
 const SCALE_WIDTH_PLAYER_TO_WALL = 0.8;
 const SCALE_HEIGHT_PLAYER_TO_WALL = 0.8;
@@ -44,6 +48,10 @@ function parseTime(milliseconds) {
     seconds = seconds % 60;
 
     if (hours > 0) {
+        // I am not expecting someone to play for 100 hours straight so I won't bother scaling this
+        if (hours > 99) {
+            return '(ㆆ_ㆆ)????'
+        }
         minutes = minutes % 60;
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
     }
@@ -87,11 +95,11 @@ function checkCollision(e1_x, e1_y, e1_width, e1_height, e2_x, e2_y, e2_width, e
 }
 
 export class GameSessionManager {
-    constructor(app, settings, screenContent, sprites, audio, key_inputs, rows_count, cols_count) {
+    constructor(app, settings, screenContent, textures, audio, key_inputs, rows_count, cols_count) {
         this.app = app;
         this.endless = settings.endless;
         this.screenContent = screenContent;
-        this.sprites = sprites;
+        this.textures = textures;
         this.audio = audio;
         this.key_inputs = key_inputs;
 
@@ -100,7 +108,8 @@ export class GameSessionManager {
         this.basis_change = false;
         this.started = false;
 
-        this.movementSpeed = 85;
+        // this.movementSpeed = 85;
+        this.movementSpeed = this.app.screen.height * 0.11;
 
         this.stats = {
             score: 0,
@@ -110,14 +119,11 @@ export class GameSessionManager {
 
         this.lives_left = settings.lives;
 
-        this.arena = new Arena(app, rows_count, cols_count);
+        this.arena = new Arena(app, textures, rows_count, cols_count);
         this.player = null;
         this.enemies = [];
         this.bombs = [];
         settings.endless ? this.level = 1 : this.level = undefined;
-
-        this.movementMock = this.app.screen.height * 0.11;
-        console.log(MODULE_NAME_PREFIX, 'Height:', this.app.screen.height);
     }
 
     /**
@@ -134,7 +140,7 @@ export class GameSessionManager {
         let maxWidth = hudWidth * maxScaleWidthTextToHud;
         let fontSize = 1;
         let logoText = new PIXI.Text({'text': text, 'style': {
-            fontFamily: 'Arial',
+            fontFamily: TEXT_FONT_FAMILY,
             fontSize: fontSize,
             fill: HEX_COLOR_CODES.WHITE,  // text color
             align: 'center'}
@@ -168,7 +174,7 @@ export class GameSessionManager {
 
         // draw background for hud
         hud_background.rect(0, 0, hud_width, hud_height);
-        hud_background.fill(HEX_COLOR_CODES.GRAY);      //TODO - texture
+        hud_background.fill(HEX_COLOR_CODES.BLUEISH_GRAY);      //TODO - texture
         this.screenContent.hud_elems.push(hud_background);
         this.app.stage.addChild(hud_background);
 
@@ -185,7 +191,7 @@ export class GameSessionManager {
         this.app.stage.addChild(round_rect);
 
         // draw text for time
-        const time_text = `Time: \n${parseTime(this.stats.time)}`;
+        const time_text = `Time:\n${parseTime(this.stats.time)}`;
         const time = this.#getBespokeHudText(time_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
         time.x = (hud_width * SCALE_WIDTH_OFFSET_TIME_TEXT_TO_HUD) - (time.width / 2);
         time.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
@@ -193,7 +199,7 @@ export class GameSessionManager {
         app.stage.addChild(time);
 
         // draw text for score
-        const score_text = `Score: \n${this.stats.score}`;
+        const score_text = `Score:\n${this.stats.score}`;
         const score = this.#getBespokeHudText(score_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
         score.x = (hud_width * SCALE_WIDTH_OFFSET_SCORE_TEXT_TO_HUD) - (score.width / 2);
         score.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
@@ -201,7 +207,7 @@ export class GameSessionManager {
         app.stage.addChild(score);
 
         // draw text for lives
-        const lives_text = `Lives: \n${this.stats.lives}`;
+        const lives_text = `Lives:\n${this.stats.lives}`;
         const lives = this.#getBespokeHudText(lives_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
         lives.x = (hud_width * SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD) - (lives.width / 2);
         lives.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
@@ -269,7 +275,7 @@ export class GameSessionManager {
         this.arena.draw();
         this.#drawStats();
         // DEBUG add player sprite (now using bunny sprite)
-        this.player = new PIXI.Sprite(this.sprites.bomb);
+        this.player = new PIXI.Sprite(this.textures.ghost1);
         this.#spawnEntity(this.player);
 
         this.started = true;
@@ -290,9 +296,10 @@ export class GameSessionManager {
     }
 
     #updateStats() {
-        this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_TIME].text = `Time: \n${parseTime(this.stats.time)}`;
-        this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE].text = `Score: \n${this.stats.score}`;
-        this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES].text = `Lives: \n${this.stats.lives}`;
+        this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_TIME].text = `Time:\n${parseTime(this.stats.time)}`;
+        this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE].text = `Score:\n${this.stats.score}`;
+        this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES].text = `Lives:\n${this.stats.lives}`;
+        this.#drawStats(); // to ensure the text is updated and scaled properly (can be overlayed because hud is always at the top of the screen)
     }
 
 
@@ -332,11 +339,14 @@ export class GameSessionManager {
 class Arena {
     /**
      * Creates a new arena with walls and empty spaces.
+     * @param {PIXI.Application} app - The PIXI application.
+     * @param {Object} textures - The textures object.
      * @param {Number} rows_count - The number of rows in the arena.
      * @param {Number} cols_count - The number of columns in the arena.
      */
-    constructor(app, rows_count, cols_count) {
+    constructor(app, textures, rows_count, cols_count) {
         this.app = app;
+        this.textures = textures;
         this.rows_count = rows_count;
         this.cols_count = cols_count;
         this.grid = this.#createGrid(rows_count, cols_count);
@@ -464,16 +474,24 @@ class Arena {
         for (let row_index = 0; row_index < this.rows_count; row_index++) {
             for (let col_index = 0; col_index < this.cols_count; col_index++) {
                 const { x, y, cellWidth, cellHeight } = this.#gridToCanvas(col_index, row_index, width, height);
-                const elem = new PIXI.Graphics();
-                elem.rect(x, y, cellWidth, cellHeight);
+                // const elem = new PIXI.Graphics();
+                // elem.rect(x, y, cellWidth, cellHeight);
                 if (this.grid[row_index][col_index] === GRID_CELL_TYPE.WALL) {
-                    elem.fill(HEX_COLOR_CODES.GRAY);
+                    let elem = new PIXI.Sprite(this.textures.wall);
+                    elem.width = cellWidth;
+                    elem.height = cellHeight;
+                    elem.x = x;
+                    elem.y = y;
+                    // elem.fill(HEX_COLOR_CODES.GRAY);
                     this.wallsElements.push(elem);
+                    app.stage.addChild(elem);
                 } else {
+                    let elem = new PIXI.Graphics();
+                    elem.rect(x, y, cellWidth, cellHeight);
                     elem.fill(HEX_COLOR_CODES.BLACK);
                     this.freeSpaceElements.push(elem);
+                    app.stage.addChild(elem);
                 }
-                app.stage.addChild(elem);
             }
         }
     }

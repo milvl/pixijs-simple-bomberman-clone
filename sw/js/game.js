@@ -7,6 +7,9 @@ const module_name_prefix = 'game.js - ';
 const ARENA_ROWS = 11;
 const ARENA_COLS = 21;
 
+const ALIAS_AUDIO_CURSOR = 'cursor';
+const ALIAS_AUDIO_CURSOR_SUBMIT = 'cursor_submit';
+
 const DEFAULT_SETTINGS = {
     lives: 3,
     volume: true,
@@ -62,16 +65,16 @@ export class Game {
      * Creates a new Game object.
      * @param {Window} window - The window object.
      * @param {PIXI.Application} app - The PIXI application.
-     * @param {Object} sprites - The sprites object.
+     * @param {Object} textures - The textures object.
      * @param {Object} audio - The audio object.
      * @param {Object} key_inputs - The key inputs object.
      * @param {Object} windowChange - The window change object.
      * @returns {Game} The new Game object.
      */
-    constructor(window, app, sprites, audio, key_inputs, windowChange) {
+    constructor(window, app, textures, audio, key_inputs, windowChange) {
         this.window = window;
         this.app = app;
-        this.sprites = sprites;
+        this.textures = textures;
         this.audio = audio;
         this.key_inputs = key_inputs;
         this.windowChange = windowChange;
@@ -92,12 +95,18 @@ export class Game {
         this.key_inputs.up.press = () => {
             if (!this.key_inputs.down.isDown) {
                 this.screenContent.selected = mod(this.screenContent.selected - 1, this.screenContent.options.length);
+                if (this.settings.volume) {
+                    PIXI.sound.play(ALIAS_AUDIO_CURSOR);
+                }
                 this.screenContent.updated = true;
             }
         }
         this.key_inputs.down.press = () => {
             if (!this.key_inputs.up.isDown) {
                 this.screenContent.selected = mod(this.screenContent.selected + 1, this.screenContent.options.length);
+                if (this.settings.volume) {
+                    PIXI.sound.play(ALIAS_AUDIO_CURSOR);
+                }
                 this.screenContent.updated = true;
             }
         }
@@ -145,6 +154,9 @@ export class Game {
                         console.error(module_name_prefix, 'Invalid option selected.');
                         break;
                 }
+                if (this.settings.volume) {
+                    PIXI.sound.play(ALIAS_AUDIO_CURSOR_SUBMIT);
+                }
                 this.screenContent.updated = true;
             }
         };
@@ -157,7 +169,7 @@ export class Game {
     #handleMainMenuUpdate() {
         if (this.screenContent == null) {
             this.#initMainMenu();
-            this.drawingManager = new MainMenuDrawingManager(this.app, this.sprites, this.screenContent);
+            this.drawingManager = new MainMenuDrawingManager(this.app, this.textures, this.screenContent);
             this.drawingManager.draw();
         }
 
@@ -200,7 +212,7 @@ export class Game {
 
     #initGameSession(delta) {
         this.screenContent = {};
-        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.sprites, this.audio, this.key_inputs, ARENA_ROWS, ARENA_COLS);  //TODO Sprites, audio, key_inputs
+        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.audio, this.key_inputs, ARENA_ROWS, ARENA_COLS);  //TODO textures, audio, key_inputs
         this.drawingManager.start(delta);
     }
 
@@ -254,6 +266,9 @@ export class Game {
                         console.error(module_name_prefix, 'Invalid option selected.');
                         break;
                 }
+                if (this.settings.volume) {
+                    PIXI.sound.play(ALIAS_AUDIO_CURSOR_SUBMIT);
+                }
                 this.screenContent.updated = true;
             }
         };
@@ -266,7 +281,7 @@ export class Game {
     #handleSettingsUpdate() {
         if (this.screenContent === null) {
             this.#initSettings();
-            this.drawingManager = new SettingsDrawingManager(this.app, this.sprites, this.screenContent);
+            this.drawingManager = new SettingsDrawingManager(this.app, this.textures, this.screenContent);
         }
 
         let switchToMainMenu = false;

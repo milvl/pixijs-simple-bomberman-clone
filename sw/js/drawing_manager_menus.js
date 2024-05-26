@@ -4,6 +4,8 @@ const module_name_prefix = "drawing_manager.js - ";
 
 const TEXT_RECT_RADIUS = 15;
 const TEXT_RECT_FONT_SIZE_SCALE = 1/2;
+const TITLE_FONT_FAMILY = "Emulogic zrEw";
+const TEXT_FONT_FAMILY = "Pressstart2p Vav7";
 
 /**
  * Returns a string with a safe margin around it.
@@ -15,17 +17,45 @@ function getStringWithSafeMargin(text) {
 }
 
 /**
+* Returns the font size that fits the text scale.
+* @param {String} textString - The text to display.
+* @param {Number} maxWidth - The maximum width of the text.
+* @param {Number} maxHeight - The maximum height of the text.
+* @param {String} fontFamily - The font family to use.
+* @returns {Number} The font size that fits the text scale.
+*/
+function getFontSize(textString, maxWidth, maxHeight, fontFamily = 'Arial') {
+   let fontSize = 1;
+   let text = new PIXI.Text({text: textString, style: {
+       fontFamily: fontFamily,
+       fontSize: fontSize,
+       fill: HEX_COLOR_CODES.BLACK,  // text color
+   }});
+   while (text.height < maxHeight) {
+       fontSize++;
+       text.style.fontSize = fontSize;
+   }
+   fontSize--;
+   while (text.width > maxWidth) {
+       fontSize--;
+       text.style.fontSize = fontSize;
+   }
+   return fontSize;
+}
+
+/**
      * Returns a PIXI.Text object with the text centered in a rectangle.
      * @param {String} text - The text to display.
      * @param {Number} x - The x-coordinate of the rectangle.
      * @param {Number} y - The y-coordinate of the rectangle.
      * @param {Number} logoRectWidth - The width of the rectangle.
      * @param {Number} logoRectHeight - The height of the rectangle.
+     * @param {String} fontFamily - The font family to use.
      * @returns {PIXI.Text} The PIXI.Text object.
      */
-function getBespokeRectText(text, x, y, logoRectWidth, logoRectHeight) {
+function getBespokeRectText(text, x, y, logoRectWidth, logoRectHeight, fontFamily = 'Arial') {
     let logoText = new PIXI.Text({'text': text, 'style': {
-        fontFamily: 'Arial',
+        fontFamily: fontFamily,
         fontSize: logoRectHeight * TEXT_RECT_FONT_SIZE_SCALE,
         fill: HEX_COLOR_CODES.BLACK,  // text color
         align: 'center'}
@@ -56,12 +86,12 @@ export class MainMenuDrawingManager {
     /**
      * Constructor for the MainMenuDrawingManager class.
      * @param {App} app - The main application object.
-     * @param {Object} sprites - The sprites object.
+     * @param {Object} textures - The textures object.
      * @param {Object} screenContent - The screen content object.
      */
-    constructor(app, sprites, screenContent) {
+    constructor(app, textures, screenContent) {
         this.app = app;
-        this.sprites = sprites;
+        this.textures = textures;
         this.screenContent = screenContent;
     }
 
@@ -97,7 +127,16 @@ export class MainMenuDrawingManager {
         this.app.stage.addChild(logoRect);
 
         // text
-        let logoText = getBespokeRectText(logoString, x, y, logoRectWidth, logoRectHeight);
+        const fontSize = getFontSize(logoString, logoRectWidth, logoRectHeight, TITLE_FONT_FAMILY);
+        const logoText = new PIXI.Text({'text': logoString, 'style': {
+            fontFamily: TITLE_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.BLACK,  // text color
+            align: 'center'}
+        });
+        logoText.x = x + (logoRectWidth / 2) - (logoText.width / 2);  // center text horizontally
+        logoText.y = y + (logoRectHeight / 2) - (logoText.height / 2);  // center text vertically
+
         this.app.stage.addChild(logoText);
     }
 
@@ -108,6 +147,11 @@ export class MainMenuDrawingManager {
         let x = (this.app.screen.width - this.app.screen.width * this.BUTTON_WIDTH_SCALE) / 2;
         let button_width = this.app.screen.width * this.BUTTON_WIDTH_SCALE;
         let button_height = this.app.screen.height * this.BUTTON_HEIGHT_SCALE;
+        const fontSize = getFontSize(getStringWithSafeMargin(this.screenContent.options.reduce((a, b) => a.length > b.length ? a : b)), 
+                                     button_width, 
+                                     button_height, 
+                                     TEXT_FONT_FAMILY);
+
         for (let i = 0; i < this.screenContent.options.length; i++) {
             let offset_from_logo = this.app.screen.height * this.LOGO_Y_OFFSET_SCALE * 2 + (this.app.screen.height * this.LOGO_HEIGHT_SCALE);
             let y = offset_from_logo + (this.app.screen.height * this.BUTTON_HEIGHT_SCALE * i * 2);
@@ -122,7 +166,15 @@ export class MainMenuDrawingManager {
             
             // text
             let buttonTextString = getStringWithSafeMargin(this.screenContent.options[i]);
-            let buttonText = getBespokeRectText(buttonTextString, x, y, button_width, button_height);
+            let buttonText = new PIXI.Text({'text': buttonTextString, 'style': {
+                fontFamily: TEXT_FONT_FAMILY,
+                fontSize: fontSize,
+                fill: HEX_COLOR_CODES.BLACK,  // text color
+                align: 'center'}
+            });
+            buttonText.x = x + (button_width / 2) - (buttonText.width / 2);  // center text horizontally
+            buttonText.y = y + (button_height / 2) - (buttonText.height / 2);  // center text vertically
+
             this.app.stage.addChild(buttonText);
 
             // add >> << around button if selected
@@ -193,12 +245,12 @@ export class SettingsDrawingManager {
     /**
      * Constructor for the SettingsDrawingManager class.
      * @param {App} app - The main application object.
-     * @param {Object} sprites - The sprites object.
+     * @param {Object} textures - The textures object.
      * @param {Object} screenContent - The screen content object.
      */
-    constructor(app, sprites, screenContent) {
+    constructor(app, textures, screenContent) {
         this.app = app;
-        this.sprites = sprites;
+        this.textures = textures;
         this.screenContent = screenContent;
     }
 
@@ -218,12 +270,13 @@ export class SettingsDrawingManager {
      * Draws the title of the settings.
      */
     #drawTitle() {
-        let titleString = getStringWithSafeMargin(this.TITLE_STRING);
-        let titleRect = new PIXI.Graphics();
-        let x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_SCALE)) / 2;
-        let y = this.app.screen.height * this.TITLE_Y_OFFSET_SCALE;
-        let titleRectWidth = this.app.screen.width * this.TITLE_WIDTH_SCALE;
-        let titleRectHeight = this.app.screen.height * this.TITLE_HEIGHT_SCALE;
+        const titleString = getStringWithSafeMargin(this.TITLE_STRING);
+        const titleRect = new PIXI.Graphics();
+        const x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_SCALE)) / 2;
+        const y = this.app.screen.height * this.TITLE_Y_OFFSET_SCALE;
+        const titleRectWidth = this.app.screen.width * this.TITLE_WIDTH_SCALE;
+        const titleRectHeight = this.app.screen.height * this.TITLE_HEIGHT_SCALE;
+        const fontSize = getFontSize(titleString, titleRectWidth, titleRectHeight, TITLE_FONT_FAMILY);
         titleRect.beginFill(HEX_COLOR_CODES.WHITE);
         titleRect.drawRoundedRect(x, 
                                   y, 
@@ -234,32 +287,16 @@ export class SettingsDrawingManager {
         this.app.stage.addChild(titleRect);
 
         // text
-        let titleText = getBespokeRectText(titleString, x, y, titleRectWidth, titleRectHeight);
-        this.app.stage.addChild(titleText);
-    }
-
-    /**
-     * Returns the font size that fits the text scale.
-     * @returns {Number} The font size that fits the text scale.
-     */
-    #getFontSize() {
-        let fontSize = 1;
-        let longest_option = getStringWithSafeMargin(this.screenContent.options.reduce((a, b) => a.length > b.length ? a : b) + 'Off');
-        let text = new PIXI.Text({text: longest_option, style: {
-            fontFamily: 'Arial',
+        let titleText = new PIXI.Text({'text': titleString, 'style': {
+            fontFamily: TITLE_FONT_FAMILY,
             fontSize: fontSize,
             fill: HEX_COLOR_CODES.BLACK,  // text color
-        }});
-        while (text.height < this.app.screen.height * this.OPTIONS_TEXT_HEIGHT_SCALE) {
-            fontSize++;
-            text.style.fontSize = fontSize;
-        }
-        fontSize--;
-        while (text.width > (this.app.screen.width * this.TITLE_WIDTH_SCALE) - text.height) {
-            fontSize--;
-            text.style.fontSize = fontSize;
-        }
-        return fontSize;
+            align: 'center'}
+        });
+        titleText.x = x + (titleRectWidth / 2) - (titleText.width / 2);  // center text horizontally
+        titleText.y = y + (titleRectHeight / 2) - (titleText.height / 2);  // center text vertically
+
+        this.app.stage.addChild(titleText);
     }
 
     /**
@@ -280,30 +317,38 @@ export class SettingsDrawingManager {
      * Draws the options of the settings.
      */
     #drawOptions() {
-        let x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_SCALE)) / 2;
+        const x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_SCALE)) / 2;
         let y = undefined;
-        let y_title_with_margins = this.app.screen.height * this.TITLE_Y_OFFSET_SCALE * 2 + (this.app.screen.height * this.TITLE_HEIGHT_SCALE);
-        let option_text_height = this.app.screen.height * this.OPTIONS_TEXT_HEIGHT_SCALE;
-        let option_text_gap = this.app.screen.height * this.OPTIONS_TEXT_GAP_SCALE;
+        const y_TitleWithMargins = this.app.screen.height * this.TITLE_Y_OFFSET_SCALE * 2 + (this.app.screen.height * this.TITLE_HEIGHT_SCALE);
+        const maxOptionTextHeight = this.app.screen.height * this.OPTIONS_TEXT_HEIGHT_SCALE;
+        const optionTextGap = this.app.screen.height * this.OPTIONS_TEXT_GAP_SCALE;
 
         // find font size fitting text scale
-        let fontSize = this.#getFontSize();
+        const fontSize = getFontSize(getStringWithSafeMargin(this.screenContent.options.reduce((a, b) => a.length > b.length ? a : b)), 
+                                     this.app.screen.width * this.OPTIONS_TEXT_WIDTH_SCALE, 
+                                     maxOptionTextHeight, 
+                                     TEXT_FONT_FAMILY);
         
         for (let i = 0; i < this.screenContent.options.length; i++) {
-            y = y_title_with_margins + (option_text_height + option_text_gap) * i;
+            // y = y_TitleWithMargins + (maxOptionTextHeight / 2) + (maxOptionTextHeight + optionTextGap) * i;
 
             let optionString = this.#getFormattedOptionString(this.screenContent.options[i], this.screenContent.options_values[i]);
             optionString = getStringWithSafeMargin(optionString);
 
-            let optionText = new PIXI.Text(optionString, {
-                fontFamily: 'Arial',
+            let optionText = new PIXI.Text({text: optionString, style: {
+                fontFamily: TEXT_FONT_FAMILY,
                 fontSize: fontSize,
                 fill: HEX_COLOR_CODES.WHITE,  // text color
                 align: 'center'
-            });
+            }});
 
+            y = y_TitleWithMargins + (maxOptionTextHeight + optionTextGap) * i;
+            
+            // TODO NOTE: FONT WEIRDLY CENTERED VERTICALLY
+            let y_fontOffset = -optionText.height / 1.25;
+            
             optionText.x = x;
-            optionText.y = y;
+            optionText.y = y - y_fontOffset;
             this.app.stage.addChild(optionText);
 
             if (i === this.screenContent.selected) {
@@ -312,10 +357,10 @@ export class SettingsDrawingManager {
                 let x_title_end = x + (this.app.screen.width * this.TITLE_WIDTH_SCALE);
                 let polygon_points = [x_title_end,
                                       y,                    // top right of text
-                                      x_title_end - option_text_height,
-                                      y + option_text_height / 2,  // middle of text
+                                      x_title_end - maxOptionTextHeight,
+                                      y + maxOptionTextHeight / 2,  // middle of text
                                       x_title_end,
-                                      y + option_text_height];     // bottom right of text
+                                      y + maxOptionTextHeight];     // bottom right of text
 
                 right_arrow.drawPolygon(polygon_points);
                 right_arrow.endFill();

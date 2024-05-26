@@ -17,3 +17,8 @@ body {
     width: 65vw;
     height: 80vh;
 }
+
+@font-face {
+    font-family: "PixelFontTitle";
+    src: url('./fonts/G7StarForceTtf-OEg6.ttf');
+}
