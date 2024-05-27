@@ -259,7 +259,6 @@ export function debugPrintScreen() {
 
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
 // prompt the user to click to start the game (audio context)
-// alert('Click anywhere to start the sound.');  TODO uncomment this line
 
 const windowChange = {
     resized: false
