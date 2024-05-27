@@ -2,6 +2,7 @@
 import loadAssetsManifest from './loader.js';
 import { GameState } from './game_states.js';
 import { Game } from './game.js';
+import { SoundManager } from './sound_manager.js';
 
 let module_name_prefix = 'app.js - ';
 
@@ -12,16 +13,21 @@ const GAME_WINDOW_SCALE = 0.8;
 const TEXTURES = {};
 const AUDIO = {};
 const KEY_INPUTS = {};
+const SOUND_MANAGER = new SoundManager();
 
-const manifest = {
+const MANIFEST = {
     bundles: [
         {
             name: "textures",
             assets: [
-                { alias: "bunny", src: "https://pixijs.com/assets/bunny.png" },
+                { alias: "bunny", src: "./img/bunny.png" },
+                { alias: "player", src: "./img/player.png" },
+                { alias: "player_walk01", src: "./img/player_walk01.png" },
+                { alias: "player_walk02", src: "./img/player_walk02.png" },
+                { alias: "player_walk03", src: "./img/player_walk03.png" },
                 { alias: "bomb", src: "./img/bomb.png" },
                 { alias: "bomb_ignited", src: "./img/bomb_ignited.png" },
-                { alias: "explosion_tileset", src: "./img/explosion_tileset.png" },
+                { alias: "explosion", src: "./img/explosion_whole.png" },
                 { alias: "wall", src: "./img/wall.png" },
                 { alias: "door", src: "./img/door.png" },
                 { alias: "ghost1", src: "./img/ghost1.png" },
@@ -38,7 +44,7 @@ const manifest = {
                 { alias: "cursor", src: "./audio/cursor.ogg"},
                 { alias: "cursor_submit", src: "./audio/cursor_submit.ogg"},
                 { alias: "door_appeared", src: "./audio/door_appeared.ogg"},
-                { alias: "explosion", src: "./audio/explosion.ogg"},
+                { alias: "explosion_sound", src: "./audio/explosion.ogg"},
             ]
         },
         {
@@ -67,7 +73,7 @@ const PIXI_INIT_CONFIG = {
  */
 async function prepareAssets() {
     try {
-        const assets = await loadAssetsManifest(manifest);
+        const assets = await loadAssetsManifest(MANIFEST);
         return assets;
     } catch (error) {
         console.error(module_name_prefix, 'Error initializing game assets:', error);
@@ -136,12 +142,12 @@ function resizeCanvas(app, windowChange) {
  * @throws {Error} If there was an error preparing the game assets.
  * @async
  */
-async function prepareGameAssets() {
+async function prepareGameAssets(textures, soundManager) {
     console.log(module_name_prefix, 'Preparing game assets...');
     const assets = await prepareAssets();
     console.log(module_name_prefix, 'Assets:', assets);
-    loadTextures(assets, TEXTURES);
-    loadAudio(assets, AUDIO);
+    loadTextures(assets, textures);
+    soundManager.assignSounds(assets);
 
     console.log(module_name_prefix, 'Game assets prepared.');
     console.log(module_name_prefix, 'Textures:', TEXTURES);
@@ -159,19 +165,6 @@ function loadTextures(assets, textures) {
         textures[texture] = PIXI.Texture.from(texture);
     }
     console.log(module_name_prefix, 'Loaded textures:', textures);
-}
-
-/** 
- * Loads audio from the assets object into the audio object.
- * @param {Object} assets - The assets object containing the audio.
- * @param {Object} audio - The audio object to load the audio into.
- */
-function loadAudio(assets, audio) {
-    console.log(module_name_prefix, 'Loading audio:', assets);
-    for (let sound in assets.audio) {
-        audio[sound] = PIXI.sound.Sound.from(sound);
-    }
-    console.log(module_name_prefix, 'Loaded audio:', audio);
 }
 
 /**
@@ -233,7 +226,7 @@ async function setup() {
 
     // prepare game assets
     try {
-        await prepareGameAssets();
+        await prepareGameAssets(TEXTURES, SOUND_MANAGER);
     } catch (error) {
         console.error(module_name_prefix, 'Failed to load textures:', error);;
     }
@@ -284,7 +277,7 @@ window.addEventListener('resize', () => resizeCanvas(app, windowChange));
 
 await setup();
 
-export const game = new Game(window, app, TEXTURES, AUDIO, KEY_INPUTS, windowChange);      // TODO remove export (debugging)
+export const game = new Game(window, app, TEXTURES, SOUND_MANAGER, KEY_INPUTS, windowChange);      // TODO remove export (debugging)
 console.log(module_name_prefix, 'Game:', game);
 
 // PIXI's ticker for the game loop

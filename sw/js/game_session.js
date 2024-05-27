@@ -13,19 +13,26 @@ const SCALE_HEIGHT_HUD_TO_SCREEN = 0.2;
 const SCALE_HEIGHT_HUD_TEXT_TO_HUD = 0.5;   // TODO NOTE: weird chosen font scaling issue
 const SCALE_WIDTH_HUD_TEXT_TO_HUD = 1/3;
 const SCALE_RADIUS_HUD_ROUND_RECT_TO_HEIGHT = 0.3;
+const SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN = 0.5;
+const SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN = 0.5;
 
 const SCALE_WIDTH_OFFSET_TIME_TEXT_TO_HUD = 1/8;
 const SCALE_WIDTH_OFFSET_SCORE_TEXT_TO_HUD = 1/2;
 const SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD = 7/8;
 
-const SCALE_WIDTH_PLAYER_TO_WALL = 0.8;
-const SCALE_HEIGHT_PLAYER_TO_WALL = 0.8;
+const SCALE_PLAYER_TO_WALL = 0.8;
+const SCALE_BOMB_TO_WALL = 0.8;
 
 const INDEX_SCREEN_CONTENT_HUD_BACKGROUND = 0;
 const INDEX_SCREEN_CONTENT_HUD_ROUND_RECT = 1;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_TIME = 2;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE = 3;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES = 4;
+
+const BOMB_DURATION_MS = 3000; // 3 seconds
+const BOMB_CHANGE_TEXTURE_TIME_MS = 500; // 0.5 seconds
+const EXPLOSION_DURATION_MS = 500; // 0.5 second
+const EASTER_EGG_TIME = 359990000; // 59 minutes 59 seconds
 
 const GRID_CELL_TYPE = {
     WALL: 1,
@@ -94,50 +101,169 @@ function checkCollision(e1_x, e1_y, e1_width, e1_height, e2_x, e2_y, e2_width, e
              e1_bottom <= e2_top);
 }
 
+/**
+ * Represents the game session state.
+ */
+class GameSessionState {
+    GAME_SESSION_STATE_IN_PROGRESS = 0;
+    GAME_SESSION_STATE_LIVES_LEFT = 1;
+    GAME_SESSION_STATE_PAUSED = 2;
+    GAME_SESSION_STATE_LEAVE_PROMPT = 3;
+    GAME_SESSION_STATE_LEVEL_CLEARED = 4;
+    GAME_SESSION_STATE_GAME_END = 5;
+
+    constructor() {
+        this.gameState = this.GAME_SESSION_STATE_IN_PROGRESS;
+    }
+
+    /**
+     * Attempts to switch to a new game state.
+     * @param {Number} gameState 
+     */
+    switchToGameState(gameState) {
+        switch (this.state) {
+            case this.GAME_SESSION_STATE_IN_PROGRESS:
+                switch (gameState) {
+                    case this.GAME_SESSION_STATE_LIVES_LEFT:
+                    case this.GAME_SESSION_STATE_PAUSED:
+                    case this.GAME_SESSION_STATE_LEAVE_PROMPT:
+                    case this.GAME_SESSION_STATE_LEVEL_CLEARED:
+                    case this.GAME_SESSION_STATE_GAME_END:
+                        this.gameState = gameState;
+                        break;
+                    default:
+                        console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                        throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                }
+                break;
+            
+            case this.GAME_SESSION_STATE_LIVES_LEFT:
+                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.gameState = gameState;
+                }
+                else {
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                }
+                break;
+            
+            case this.GAME_SESSION_STATE_PAUSED:
+                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.gameState = gameState;
+                }
+                else {
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                }
+                break;
+            
+            case this.GAME_SESSION_STATE_LEAVE_PROMPT:
+                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.gameState = gameState;
+                }
+                else {
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                }    
+                break;
+            
+            case this.GAME_SESSION_STATE_LEVEL_CLEARED:
+                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.gameState = gameState;
+                }
+                else {
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                }
+                break;
+
+            default:
+                console.error(`${MODULE_NAME_PREFIX}Invalid game state for setup: ${gameState}`);
+                throw new Error(`Invalid game state for setup: ${gameState}`);
+
+        }
+    }
+
+    get state() {
+        return this.gameState;
+    }
+
+    /**
+     * Returns the name of the game state.
+     * @param {Number} state - The game state.
+     * @returns {String} The name of the game state.
+     */
+    getStateName(state) {
+        switch (state) {
+            case this.GAME_SESSION_STATE_IN_PROGRESS:
+                return 'In Progress';
+            case this.GAME_SESSION_STATE_LIVES_LEFT:
+                return 'Lives Left';
+            case this.GAME_SESSION_STATE_PAUSED:
+                return 'Paused';
+            case this.GAME_SESSION_STATE_LEAVE_PROMPT:
+                return 'Leave Prompt';
+            case this.GAME_SESSION_STATE_LEVEL_CLEARED:
+                return 'Level Cleared';
+            case this.GAME_SESSION_STATE_GAME_END:
+                return 'Game End';
+            default:
+                return 'Unknown';
+        }
+    }
+}
+
 export class GameSessionManager {
-    constructor(app, settings, screenContent, textures, audio, key_inputs, rows_count, cols_count) {
+    constructor(app, settings, screenContent, textures, soundManager, key_inputs, rows_count, cols_count) {
         this.app = app;
         this.endless = settings.endless;
         this.screenContent = screenContent;
+        this.screenContent.pauseSign = null;
         this.textures = textures;
-        this.audio = audio;
+        this.soundManager = soundManager;
         this.key_inputs = key_inputs;
 
+        // variables for screen resizing
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
         this.basis_change = false;
-        this.started = false;
 
-        // this.movementSpeed = 85;
-        this.movementSpeed = this.app.screen.height * 0.11;
-
+        // game stats
         this.stats = {
             score: 0,
             time: 0,
             lives: settings.lives,
         };
 
-        this.lives_left = settings.lives;
-
+        // game objects and settings
+        this.gameSessionState = null;
         this.arena = new Arena(app, textures, rows_count, cols_count);
         this.player = null;
+        this.lives_left = settings.lives;
         this.enemies = [];
         this.bombs = [];
+        this.explosions = [];
+        // this.movementSpeed = 85;
+        this.movementSpeed = this.app.screen.height * 0.11;
         settings.endless ? this.level = 1 : this.level = undefined;
+
+        // flags
+        this.started = false;
+        this.bomb_placed = false;
     }
 
     /**
-     * Returns a PIXI.Text object with the text for hud.
+     * Returns a PIXI.Text object with the text scaled to fit a specified border.
      * @param {String} text - The text to display.
-     * @param {Number} hudWidth - The width of the hud.
-     * @param {Number} hudHeight - The height of the hud.
-     * @param {Number} maxScaleHeightTextToHud - The maximum scale of the text height to the hud height.
-     * @param {Number} maxScaleWidthTextToHud - The maximum scale of the text width to the hud width.
+     * @param {Number} borderWidth - The width of the border.
+     * @param {Number} borderHeight - The height of the border.
+     * @param {Number} maxScaleHeightTextToBorder - The maximum scale of the text height to the border height.
+     * @param {Number} maxScaleWidthTextToBorder - The maximum scale of the text width to the border width.
      * @returns {PIXI.Text} The PIXI.Text object.
      */
-    #getBespokeHudText(text, hudWidth, hudHeight, maxScaleHeightTextToHud, maxScaleWidthTextToHud) {
-        let maxHeight = hudHeight * maxScaleHeightTextToHud;
-        let maxWidth = hudWidth * maxScaleWidthTextToHud;
+    #getSizedText(text, borderWidth, borderHeight, maxScaleHeightTextToBorder, maxScaleWidthTextToBorder) {
+        let maxHeight = borderHeight * maxScaleHeightTextToBorder;
+        let maxWidth = borderWidth * maxScaleWidthTextToBorder;
         let fontSize = 1;
         let logoText = new PIXI.Text({'text': text, 'style': {
             fontFamily: TEXT_FONT_FAMILY,
@@ -158,6 +284,9 @@ export class GameSessionManager {
         return logoText;
     }
 
+    /**
+     * Draws the stats on the screen.
+     */
     #drawStats() {
         if (this.screenContent.hud_elems) {
             for (let elem of this.screenContent.hud_elems) {
@@ -174,7 +303,7 @@ export class GameSessionManager {
 
         // draw background for hud
         hud_background.rect(0, 0, hud_width, hud_height);
-        hud_background.fill(HEX_COLOR_CODES.BLUEISH_GRAY);      //TODO - texture
+        hud_background.fill(HEX_COLOR_CODES.BLUEISH_GRAY);
         this.screenContent.hud_elems.push(hud_background);
         this.app.stage.addChild(hud_background);
 
@@ -192,7 +321,7 @@ export class GameSessionManager {
 
         // draw text for time
         const time_text = `Time:\n${parseTime(this.stats.time)}`;
-        const time = this.#getBespokeHudText(time_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
+        const time = this.#getSizedText(time_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
         time.x = (hud_width * SCALE_WIDTH_OFFSET_TIME_TEXT_TO_HUD) - (time.width / 2);
         time.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
         this.screenContent.hud_elems.push(time);
@@ -200,7 +329,7 @@ export class GameSessionManager {
 
         // draw text for score
         const score_text = `Score:\n${this.stats.score}`;
-        const score = this.#getBespokeHudText(score_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
+        const score = this.#getSizedText(score_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
         score.x = (hud_width * SCALE_WIDTH_OFFSET_SCORE_TEXT_TO_HUD) - (score.width / 2);
         score.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
         this.screenContent.hud_elems.push(score);
@@ -208,31 +337,49 @@ export class GameSessionManager {
 
         // draw text for lives
         const lives_text = `Lives:\n${this.stats.lives}`;
-        const lives = this.#getBespokeHudText(lives_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
+        const lives = this.#getSizedText(lives_text, hud_width, hud_height, SCALE_HEIGHT_HUD_TEXT_TO_HUD, SCALE_WIDTH_HUD_TEXT_TO_HUD);
         lives.x = (hud_width * SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD) - (lives.width / 2);
         lives.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
         this.screenContent.hud_elems.push(lives);
         app.stage.addChild(lives);
     }
 
-    #spawnEntity(entity, start_x = null, start_y = null) {
+    /**
+     * Spawns an entity on the screen.
+     * @param {PIXI.Sprite} entity - The entity to spawn.
+     * @param {Number} [start_x=null] - The starting x-coordinate.
+     * @param {Number} [start_y=null] - The starting y-coordinate.
+     * @param {Number} [scale=1] - The scale of the entity.
+     */
+    #spawnEntity(entity, start_x = null, start_y = null, scale = 1) {
         let wall_width = this.arena.wall_width
         let wall_height = this.arena.wall_height
-        entity.width = wall_width * SCALE_WIDTH_PLAYER_TO_WALL;
-        entity.height = wall_height * SCALE_HEIGHT_PLAYER_TO_WALL;
-        let { x, y } = this.arena.randomEmptySpace();   //TODO - add support for custom spawn location
+        entity.width = wall_width * scale;
+        entity.height = wall_height * scale; //TODO SCALING FOR SPRITES
+        let { x, y } = { x: null, y: null };
+        if (start_x !== null && start_y !== null) {
+            x = start_x;
+            y = start_y;
+        } else {
+            ({ x, y } = this.arena.randomEmptySpace());
+        }
         entity.x = x + (wall_width - entity.width) / 2;
         entity.y = y + (wall_height - entity.height) / 2;
         this.app.stage.addChild(entity);
     }
 
-    #redrawEntity(entity) {
+    /**
+     * Redraws the entity on the screen (because of screen resizing)
+     * @param {PIXI.Sprite} entity - The entity to redraw.
+     * @param {Number} [scale=1] - The scale of the entity.
+     */
+    #redrawEntity(entity, scale = 1) {
         app.stage.removeChild(entity);
         app.stage.addChild(entity);
         const wall_width = this.arena.wall_width
         const wall_height = this.arena.wall_height
-        entity.width = wall_width * SCALE_WIDTH_PLAYER_TO_WALL;
-        entity.height = wall_height * SCALE_HEIGHT_PLAYER_TO_WALL;
+        entity.width = wall_width * scale;
+        entity.height = wall_height * scale;
         
         // transform old coordinates to new coordinates
         const newWidthScale = this.app.screen.width / this.prevWidth;
@@ -269,14 +416,69 @@ export class GameSessionManager {
     }
 
     /**
+     * Sets up the key inputs for the game session.
+     */
+    #setUpKeyInputs() {
+        // arrow keys for movement are handled on each frame update (to combat desync)
+
+        const spaceFunc = () => {
+            if (this.started && this.bombs.length < 1) {
+                this.bomb_placed = true;
+            }
+        }
+
+        const escFunc = () => {
+            throw new Error('ESCAPE KEY: Not implemented yet.');
+        }
+
+        const pauseFunc = () => {
+            if (this.started) {
+                if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
+                    this.key_inputs.space.press = null;
+                    this.key_inputs.esc.press = null;
+                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
+                }
+                else {
+                    this.key_inputs.space.press = spaceFunc;
+                    this.key_inputs.esc.press = escFunc;
+                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+                    this.#updateGameSessionPaused(true);
+                }
+            }
+        }
+        
+        // spacebar for bomb
+        this.key_inputs.space.press = spaceFunc;
+
+        // esc for returning to main menu (with prompt)
+        this.key_inputs.esc.press = escFunc;
+
+        // p for pausing the game
+        this.key_inputs.pause.press = pauseFunc;
+    }
+
+    /**
+     * Cleans up the key inputs for the game session.
+     * This is called when the game session is stopped.
+     */
+    #cleanUpKeyInputs() {
+        this.key_inputs.space.press = null;
+        this.key_inputs.esc.press = null;
+        this.key_inputs.pause.press = null;
+    }
+
+    /**
      * Starts the game session.
      */
     start() {
+        this.#setUpKeyInputs();
+        this.gameSessionState = new GameSessionState();
+
         this.arena.draw();
         this.#drawStats();
         // DEBUG add player sprite (now using bunny sprite)
-        this.player = new PIXI.Sprite(this.textures.ghost1);
-        this.#spawnEntity(this.player);
+        this.player = new PIXI.Sprite(this.textures.player);
+        this.#spawnEntity(this.player, null, null, SCALE_PLAYER_TO_WALL);
 
         this.started = true;
         // TODO: add player and enemies
@@ -287,7 +489,20 @@ export class GameSessionManager {
         
         this.arena.draw();
         this.#drawStats();
-        this.#redrawEntity(this.player);
+        this.#redrawEntity(this.player, SCALE_PLAYER_TO_WALL);
+        for (let bomb of this.bombs) {
+            this.#redrawEntity(bomb.bomb, SCALE_BOMB_TO_WALL);
+        }
+        for (let explosion_instance of this.explosions) {
+            for (let explosion of explosion_instance.explosions) {
+                this.#redrawEntity(explosion);
+            }
+        }
+        if (this.screenContent.pauseSign) {
+            this.app.stage.removeChild(this.screenContent.pauseSign);
+            this.screenContent.pauseSign = null;
+            this.#updateGameSessionPaused();
+        }
 
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
@@ -299,35 +514,211 @@ export class GameSessionManager {
         this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_TIME].text = `Time:\n${parseTime(this.stats.time)}`;
         this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE].text = `Score:\n${this.stats.score}`;
         this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES].text = `Lives:\n${this.stats.lives}`;
-        this.#drawStats(); // to ensure the text is updated and scaled properly (can be overlayed because hud is always at the top of the screen)
+        // this.#drawStats(); // to ensure the text is updated and scaled properly (can be overlayed because hud is always at the top of the screen)
     }
 
+    /**
+     * Updates the player movement based on key inputs.
+     * @param {Object} delta - The delta object.
+     */
+    #updatePlayerMovement(delta) {
+        const distance = this.movementSpeed * (delta.elapsedMS / 1000); // convert ms to seconds
+
+        let deltaX = 0;
+        let deltaY = 0;
+
+        if (this.key_inputs.left.isDown)
+            deltaX -= distance;
+        if (this.key_inputs.right.isDown) 
+            deltaX += distance;
+        if (this.key_inputs.up.isDown) 
+            deltaY -= distance;
+        if (this.key_inputs.down.isDown) 
+            deltaY += distance;
+        
+        this.#updateEntity(this.player, deltaX, deltaY);
+    }
+
+    /**
+     * Creates an explosion on the screen.
+     * @param {Number} cellX - The x-coordinate of the bomb.
+     * @param {Number} cellY - The y-coordinate of the bomb. 
+     */
+    #createExplosion(cellX, cellY) {
+        // sanity check
+        if (cellX <= 0 || cellX >= this.arena.cols_count - 1 || cellY <= 0 || cellY >= this.arena.rows_count - 1) {
+            console.error(MODULE_NAME_PREFIX, 'Invalid bomb detonation coordinates:', cellX, cellY);
+            return;
+        }
+
+        const explosion_instance = {explosions: [], time: null};
+
+        // explosion positions
+        const {centerX, centerY} = {centerX: cellX, centerY: cellY};
+        const {northX, northY} = {northX: cellX, northY: cellY - 1};
+        const {southX, southY} = {southX: cellX, southY: cellY + 1};
+        const {eastX, eastY} = {eastX: cellX + 1, eastY: cellY};
+        const {westX, westY} = {westX: cellX - 1, westY: cellY};
+        const spread = [{x: northX, y: northY}, {x: southX, y: southY}, {x: eastX, y: eastY}, {x: westX, y: westY}];
+
+        // create explosion sprites (now with graphics
+        // center
+        let explosion = new PIXI.Sprite(this.textures.explosion);
+        let { x: x_center, y: y_center } = this.arena.gridToCanvas(centerX, centerY, this.app.screen.width, this.app.screen.height);
+        this.#spawnEntity(explosion, x_center, y_center);
+        explosion_instance.explosions.push(explosion);
+        // all directions
+        for (let dir of spread) {
+            if (this.arena.grid[dir.y][dir.x] === GRID_CELL_TYPE.EMPTY) {
+                explosion = new PIXI.Sprite(this.textures.explosion);
+                let { x, y } = this.arena.gridToCanvas(dir.x, dir.y, this.app.screen.width, this.app.screen.height);
+                this.#spawnEntity(explosion, x, y);
+                explosion_instance.explosions.push(explosion);
+            }
+        }
+        explosion_instance.time = this.stats.time;
+        this.explosions.push(explosion_instance);
+        this.soundManager.playExplosion();
+    }
+
+    /**
+     * Updates the bombs on the screen.
+     */
+    #updateBombs() {
+        // check if a bomb should be placed
+        if (this.bomb_placed) {
+            // find the player's position
+            const player_x = this.player.x;
+            const player_y = this.player.y;
+
+            // put the bomb in the cell the player is most in
+            const { x: cellX, y: cellY } = this.arena.canvasToGrid(player_x, player_y, this.app.screen.width, this.app.screen.height);
+            const { x, y } = this.arena.gridToCanvas(cellX, cellY, this.app.screen.width, this.app.screen.height);
+
+            // create a bomb sprite
+            let bomb = new PIXI.Sprite(this.textures.bomb);
+            this.#spawnEntity(bomb, x, y, SCALE_BOMB_TO_WALL);
+            
+            // add the bomb to the list of bombs
+            const bomb_info = {bomb: bomb, time: this.stats.time, cellX: cellX, cellY: cellY}
+            this.bombs.push(bomb_info);
+
+            this.bomb_placed = false;
+            console.log(MODULE_NAME_PREFIX, 'Bomb placed at:', x, y);
+            console.log(MODULE_NAME_PREFIX, 'Bomb: ', bomb_info);
+        }
+
+        // update each bomb
+        for (let bomb of this.bombs) {
+            const bomb_time_placed = this.stats.time - bomb.time;
+
+            // texture swapping
+            const bomb_change_texture = Math.round(bomb_time_placed / BOMB_CHANGE_TEXTURE_TIME_MS) % 2;
+            const bomb_textures = [this.textures.bomb, this.textures.bomb_ignited];
+            bomb.bomb.texture = bomb_textures[bomb_change_texture];
+
+            // bomb is to be detonated
+            if (bomb_time_placed >= BOMB_DURATION_MS) {
+                this.app.stage.removeChild(bomb.bomb);
+
+                this.#createExplosion(bomb.cellX, bomb.cellY);
+                this.bombs.splice(this.bombs.indexOf(bomb), 1);
+            }
+        }
+    }
+
+    /**
+     * Updates the explosions on the screen.
+     */
+    #updateExplosions() {
+        for (let explosion_instance of this.explosions) {
+            const explosion_time = this.stats.time - explosion_instance.time;
+            if (explosion_time >= EXPLOSION_DURATION_MS) {
+                for (let explosion of explosion_instance.explosions) {
+                    this.app.stage.removeChild(explosion);
+                }
+                this.explosions.splice(this.explosions.indexOf(explosion_instance), 1);
+            }
+        }
+    }
+
+    #updateGameSessionInProgress(delta) {
+        // process entity updates when the screen is not being resized
+        if (!this.basis_change) {
+            this.stats.time = this.stats.time + delta.elapsedMS;
+
+            this.#updateStats();
+            // this.#handleLeaveGame();
+            // this.#handlePause();
+            this.#updatePlayerMovement(delta);
+            // this.#updateEnemyMovement(delta);
+            this.#updateBombs();
+            // this.#hitcheckEntities();
+            this.#updateExplosions();
+            // this.#updateScore();
+            // this.#handleLevelEnd();
+            // this.#handleGameEnd();
+        }
+    }
+
+    #updateGameSessionLivesLeft(delta) {
+        // TODO
+    }
+
+    #updateGameSessionPaused(endPause = false) {
+        if (!this.screenContent.pauseSign) {
+            const { width: window_width, height: window_height } = this.app.screen;
+            const pauseSign = this.#getSizedText('PAUSED', window_width, window_height, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
+            pauseSign.x = (window_width - pauseSign.width) / 2;
+            pauseSign.y = (window_height - pauseSign.height) / 2;
+            this.screenContent.pauseSign = pauseSign;
+            this.app.stage.addChild(pauseSign);
+        }
+        if (endPause) {
+            this.app.stage.removeChild(this.screenContent.pauseSign);
+            this.screenContent.pauseSign = null;
+        }
+    }
+
+    #updateGameSessionLeavePrompt(delta) {
+        // TODO
+    }
+
+    #updateGameSessionLevelCleared(delta) {
+        // TODO
+    }
+
+    #updateGameSessionGameEnd(delta) {
+        // TODO
+    }
 
     update(delta) {
         if (!this.started) {
             console.error('Game session not started yet.');
             return;
         }
-        this.stats.time = this.stats.time + delta.elapsedMS;
-
-        this.#updateStats();
-
-        if (!this.basis_change) {
-            const distance = this.movementSpeed * (delta.elapsedMS / 1000); // convert ms to seconds
-
-            let deltaX = 0;
-            let deltaY = 0;
-
-            if (this.key_inputs.left.isDown)
-                deltaX -= distance;
-            if (this.key_inputs.right.isDown) 
-                deltaX += distance;
-            if (this.key_inputs.up.isDown) 
-                deltaY -= distance;
-            if (this.key_inputs.down.isDown) 
-                deltaY += distance;
-            
-            this.#updateEntity(this.player, deltaX, deltaY);
+        switch (this.gameSessionState.state) {
+            case this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS:
+                this.#updateGameSessionInProgress(delta);
+                break;
+            case this.gameSessionState.GAME_SESSION_STATE_LIVES_LEFT:
+                this.#updateGameSessionLivesLeft(delta);
+                break;
+            case this.gameSessionState.GAME_SESSION_STATE_PAUSED:
+                this.#updateGameSessionPaused();
+                break;
+            case this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT:
+                this.#updateGameSessionLeavePrompt(delta);
+                break;
+            case this.gameSessionState.GAME_SESSION_STATE_LEVEL_CLEARED:
+                this.#updateGameSessionLevelCleared(delta);
+                break;
+            case this.gameSessionState.GAME_SESSION_STATE_GAME_END:
+                this.#updateGameSessionGameEnd(delta);
+                break;
+            default:
+                console.error(MODULE_NAME_PREFIX + "Invalid game state: " + this.gameSessionState.state);
+                throw new Error("Invalid game state: " + this.gameSessionState.state);
         }
     }
 }
@@ -388,13 +779,13 @@ class Arena {
      * @param {Number} screenHeight - The height of the screen.
      * @returns {Object} The canvas coordinates.
      */
-    #gridToCanvas(gridX, gridY, screenWidth, screenHeight) {
+    gridToCanvas(gridX, gridY, screenWidth, screenHeight) {
         let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.cols_count;
         let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rows_count;
         let canvasX = gridX * cellWidth;
         let y_offset = (screenHeight - (cellHeight * this.rows_count));
         let canvasY = y_offset + (gridY * cellHeight);
-        return { x: canvasX, y: canvasY, cellWidth, cellHeight };
+        return { x: canvasX, y: canvasY, cellWidth: cellWidth, cellHeight: cellHeight };
     }
 
     /**
@@ -408,10 +799,10 @@ class Arena {
     canvasToGrid(canvasX, canvasY, screenWidth, screenHeight) {
         let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.cols_count;
         let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rows_count;
-        let gridX = Math.floor(canvasX / cellWidth);
+        let gridX = Math.round(canvasX / cellWidth);
         let y_offset = (screenHeight - (cellHeight * this.rows_count));
-        let gridY = Math.floor((canvasY - y_offset) / cellHeight);
-        return { gridX, gridY };
+        let gridY = Math.round((canvasY - y_offset) / cellHeight);
+        return { x: gridX, y: gridY };
     }
 
     /**
@@ -444,8 +835,8 @@ class Arena {
             col_index = Math.floor(Math.random() * this.cols_count);
         }
         
-        const x_coord = this.#gridToCanvas(col_index, row_index, this.app.screen.width, this.app.screen.height).x;
-        const y_coord = this.#gridToCanvas(col_index, row_index, this.app.screen.width, this.app.screen.height).y;
+        const x_coord = this.gridToCanvas(col_index, row_index, this.app.screen.width, this.app.screen.height).x;
+        const y_coord = this.gridToCanvas(col_index, row_index, this.app.screen.width, this.app.screen.height).y;
         return { x: x_coord, y: y_coord };
     }
 
@@ -473,7 +864,7 @@ class Arena {
         const { width, height } = this.app.screen;
         for (let row_index = 0; row_index < this.rows_count; row_index++) {
             for (let col_index = 0; col_index < this.cols_count; col_index++) {
-                const { x, y, cellWidth, cellHeight } = this.#gridToCanvas(col_index, row_index, width, height);
+                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(col_index, row_index, width, height);
                 // const elem = new PIXI.Graphics();
                 // elem.rect(x, y, cellWidth, cellHeight);
                 if (this.grid[row_index][col_index] === GRID_CELL_TYPE.WALL) {

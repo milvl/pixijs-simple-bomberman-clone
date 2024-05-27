@@ -66,16 +66,16 @@ export class Game {
      * @param {Window} window - The window object.
      * @param {PIXI.Application} app - The PIXI application.
      * @param {Object} textures - The textures object.
-     * @param {Object} audio - The audio object.
+     * @param {SoundManager} soundManager - The sound manager object.
      * @param {Object} key_inputs - The key inputs object.
      * @param {Object} windowChange - The window change object.
      * @returns {Game} The new Game object.
      */
-    constructor(window, app, textures, audio, key_inputs, windowChange) {
+    constructor(window, app, textures, soundManager, key_inputs, windowChange) {
         this.window = window;
         this.app = app;
         this.textures = textures;
-        this.audio = audio;
+        this.soundManager = soundManager;
         this.key_inputs = key_inputs;
         this.windowChange = windowChange;
 
@@ -95,18 +95,14 @@ export class Game {
         this.key_inputs.up.press = () => {
             if (!this.key_inputs.down.isDown) {
                 this.screenContent.selected = mod(this.screenContent.selected - 1, this.screenContent.options.length);
-                if (this.settings.volume) {
-                    PIXI.sound.play(ALIAS_AUDIO_CURSOR);
-                }
+                this.soundManager.playCursor();
                 this.screenContent.updated = true;
             }
         }
         this.key_inputs.down.press = () => {
             if (!this.key_inputs.up.isDown) {
                 this.screenContent.selected = mod(this.screenContent.selected + 1, this.screenContent.options.length);
-                if (this.settings.volume) {
-                    PIXI.sound.play(ALIAS_AUDIO_CURSOR);
-                }
+                this.soundManager.playCursor();
                 this.screenContent.updated = true;
             }
         }
@@ -154,9 +150,7 @@ export class Game {
                         console.error(module_name_prefix, 'Invalid option selected.');
                         break;
                 }
-                if (this.settings.volume) {
-                    PIXI.sound.play(ALIAS_AUDIO_CURSOR_SUBMIT);
-                }
+                this.soundManager.playCursorSubmit();
                 this.screenContent.updated = true;
             }
         };
@@ -212,7 +206,7 @@ export class Game {
 
     #initGameSession(delta) {
         this.screenContent = {};
-        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.audio, this.key_inputs, ARENA_ROWS, ARENA_COLS);  //TODO textures, audio, key_inputs
+        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.soundManager, this.key_inputs, ARENA_ROWS, ARENA_COLS);  //TODO textures, audio, key_inputs
         this.drawingManager.start(delta);
     }
 
@@ -254,6 +248,7 @@ export class Game {
                     case 1:
                         this.screenContent.options_values[this.screenContent.selected] = !this.screenContent.options_values[this.screenContent.selected];
                         this.settings.volume = this.screenContent.options_values[this.screenContent.selected];
+                        this.soundManager.soundEnabled = this.settings.volume;
                         break;
                     case 2:
                         this.screenContent.options_values[this.screenContent.selected] = !this.screenContent.options_values[this.screenContent.selected];
@@ -266,9 +261,7 @@ export class Game {
                         console.error(module_name_prefix, 'Invalid option selected.');
                         break;
                 }
-                if (this.settings.volume) {
-                    PIXI.sound.play(ALIAS_AUDIO_CURSOR_SUBMIT);
-                }
+                this.soundManager.playCursorSubmit();
                 this.screenContent.updated = true;
             }
         };
