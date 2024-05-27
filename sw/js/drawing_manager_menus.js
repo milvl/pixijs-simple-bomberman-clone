@@ -108,7 +108,6 @@ export class MainMenuDrawingManager {
 
     /**
      * Draws the logo of the main menu.
-     * // TODO - add logo image
      */
     #drawLogo() {
         // now use simple text
@@ -370,7 +369,7 @@ export class SettingsDrawingManager {
     }
 
     /**
-     * Draws the main menu.
+     * Draws the settings.
      */
     draw() {
         this.#drawBackground();
@@ -379,7 +378,7 @@ export class SettingsDrawingManager {
     }
 
     /**
-     * Redraws the main menu.
+     * Redraws the settings.
      */
     redraw() {
         this.app.stage.removeChildren();
@@ -387,7 +386,7 @@ export class SettingsDrawingManager {
     }
 
     /**
-     * Destroys the main menu.
+     * Destroys the settings.
      */
     cleanUp() {
         this.app.stage.removeChildren();

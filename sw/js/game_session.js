@@ -1,4 +1,5 @@
 import { HEX_COLOR_CODES } from "./color_codes.js";
+import { GameSessionState } from "./game_session_states.js";
 // import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
@@ -101,118 +102,13 @@ function checkCollision(e1_x, e1_y, e1_width, e1_height, e2_x, e2_y, e2_width, e
              e1_bottom <= e2_top);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 /**
- * Represents the game session state.
+ * Represents the game session manager.
+ * This class manages the game session and its state.
+ * It also handles the game logic and updates.
+ * It also handles the key inputs for the game session.
  */
-class GameSessionState {
-    GAME_SESSION_STATE_IN_PROGRESS = 0;
-    GAME_SESSION_STATE_LIVES_LEFT = 1;
-    GAME_SESSION_STATE_PAUSED = 2;
-    GAME_SESSION_STATE_LEAVE_PROMPT = 3;
-    GAME_SESSION_STATE_LEVEL_CLEARED = 4;
-    GAME_SESSION_STATE_GAME_END = 5;
-
-    constructor() {
-        this.gameState = this.GAME_SESSION_STATE_IN_PROGRESS;
-    }
-
-    /**
-     * Attempts to switch to a new game state.
-     * @param {Number} gameState 
-     */
-    switchToGameState(gameState) {
-        switch (this.state) {
-            case this.GAME_SESSION_STATE_IN_PROGRESS:
-                switch (gameState) {
-                    case this.GAME_SESSION_STATE_LIVES_LEFT:
-                    case this.GAME_SESSION_STATE_PAUSED:
-                    case this.GAME_SESSION_STATE_LEAVE_PROMPT:
-                    case this.GAME_SESSION_STATE_LEVEL_CLEARED:
-                    case this.GAME_SESSION_STATE_GAME_END:
-                        this.gameState = gameState;
-                        break;
-                    default:
-                        console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                        throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                }
-                break;
-            
-            case this.GAME_SESSION_STATE_LIVES_LEFT:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
-                }
-                else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                }
-                break;
-            
-            case this.GAME_SESSION_STATE_PAUSED:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
-                }
-                else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                }
-                break;
-            
-            case this.GAME_SESSION_STATE_LEAVE_PROMPT:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
-                }
-                else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                }    
-                break;
-            
-            case this.GAME_SESSION_STATE_LEVEL_CLEARED:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
-                }
-                else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                }
-                break;
-
-            default:
-                console.error(`${MODULE_NAME_PREFIX}Invalid game state for setup: ${gameState}`);
-                throw new Error(`Invalid game state for setup: ${gameState}`);
-
-        }
-    }
-
-    get state() {
-        return this.gameState;
-    }
-
-    /**
-     * Returns the name of the game state.
-     * @param {Number} state - The game state.
-     * @returns {String} The name of the game state.
-     */
-    getStateName(state) {
-        switch (state) {
-            case this.GAME_SESSION_STATE_IN_PROGRESS:
-                return 'In Progress';
-            case this.GAME_SESSION_STATE_LIVES_LEFT:
-                return 'Lives Left';
-            case this.GAME_SESSION_STATE_PAUSED:
-                return 'Paused';
-            case this.GAME_SESSION_STATE_LEAVE_PROMPT:
-                return 'Leave Prompt';
-            case this.GAME_SESSION_STATE_LEVEL_CLEARED:
-                return 'Level Cleared';
-            case this.GAME_SESSION_STATE_GAME_END:
-                return 'Game End';
-            default:
-                return 'Unknown';
-        }
-    }
-}
-
 export class GameSessionManager {
     constructor(app, settings, screenContent, textures, soundManager, key_inputs, rows_count, cols_count) {
         this.app = app;
@@ -442,7 +338,7 @@ export class GameSessionManager {
                     this.key_inputs.space.press = spaceFunc;
                     this.key_inputs.esc.press = escFunc;
                     this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
-                    this.#updateGameSessionPaused(true);
+                    this.#handleGameSessionPausedUpdate(true);
                 }
             }
         }
@@ -484,6 +380,9 @@ export class GameSessionManager {
         // TODO: add player and enemies
     }
 
+    /**
+     * Redraws the game session. Used when the screen is resized.
+     */
     redraw() {
         this.basis_change = true;
         
@@ -501,7 +400,7 @@ export class GameSessionManager {
         if (this.screenContent.pauseSign) {
             this.app.stage.removeChild(this.screenContent.pauseSign);
             this.screenContent.pauseSign = null;
-            this.#updateGameSessionPaused();
+            this.#handleGameSessionPausedUpdate();
         }
 
         this.prevWidth = this.app.screen.width;
@@ -510,6 +409,9 @@ export class GameSessionManager {
         this.basis_change = false;
     }
 
+    /**
+     * Updates the stats on the screen.
+     */
     #updateStats() {
         this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_TIME].text = `Time:\n${parseTime(this.stats.time)}`;
         this.screenContent.hud_elems[INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE].text = `Score:\n${this.stats.score}`;
@@ -628,6 +530,28 @@ export class GameSessionManager {
     }
 
     /**
+     * Hit checks the entities on the screen and 
+     * handles the consequences of the hits.
+     * // TODO not complete
+     */
+    #hitcheckEntities() {
+        // explosion hit check
+        for (let explosion_instance of this.explosions) {
+            for (let explosion of explosion_instance.explosions) {
+                const explosion_bounds = explosion.getBounds();
+                const player_bounds = this.player.getBounds();
+                if (checkCollision(explosion_bounds.x, explosion_bounds.y, explosion_bounds.width, explosion_bounds.height, player_bounds.x, player_bounds.y, player_bounds.width, player_bounds.height)) {
+                    this.stats.lives -= 1;
+                    // remove the explosion
+                    this.app.stage.removeChild(explosion);
+                    explosion_instance.explosions.splice(explosion_instance.explosions.indexOf(explosion), 1);
+                    console.error(MODULE_NAME_PREFIX, 'Player hit by explosion!');
+                }
+            }
+        }
+    }
+
+    /**
      * Updates the explosions on the screen.
      */
     #updateExplosions() {
@@ -642,7 +566,12 @@ export class GameSessionManager {
         }
     }
 
-    #updateGameSessionInProgress(delta) {
+    /**
+     * Handles updating the game session when it is in progress.
+     * Does not update when the screen is being resized.
+     * @param {Object} delta - The delta object for time-based updates.
+     */
+    #handleGameSessionInProgressUpdate(delta) {
         // process entity updates when the screen is not being resized
         if (!this.basis_change) {
             this.stats.time = this.stats.time + delta.elapsedMS;
@@ -653,7 +582,7 @@ export class GameSessionManager {
             this.#updatePlayerMovement(delta);
             // this.#updateEnemyMovement(delta);
             this.#updateBombs();
-            // this.#hitcheckEntities();
+            this.#hitcheckEntities();
             this.#updateExplosions();
             // this.#updateScore();
             // this.#handleLevelEnd();
@@ -661,11 +590,15 @@ export class GameSessionManager {
         }
     }
 
-    #updateGameSessionLivesLeft(delta) {
+    #handleGameSessionLivesLeftUpdate(delta) {
         // TODO
     }
 
-    #updateGameSessionPaused(endPause = false) {
+    /**
+     * Handles updating the game session when it is paused.
+     * @param {Boolean} endPause - True if the pause sign should be removed, false otherwise.
+     */
+    #handleGameSessionPausedUpdate(endPause = false) {
         if (!this.screenContent.pauseSign) {
             const { width: window_width, height: window_height } = this.app.screen;
             const pauseSign = this.#getSizedText('PAUSED', window_width, window_height, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
@@ -680,18 +613,25 @@ export class GameSessionManager {
         }
     }
 
-    #updateGameSessionLeavePrompt(delta) {
+    #handleGameSessionLeavePromptUpdate(delta) {
         // TODO
     }
 
-    #updateGameSessionLevelCleared(delta) {
+    #handleGameSessionLevelClearedUpdate(delta) {
         // TODO
     }
 
-    #updateGameSessionGameEnd(delta) {
+    #handleGameSessionGameEndUpdate(delta) {
         // TODO
     }
 
+    /**
+     * Handles the game session updates based on state of 
+     * the game session and user inputs.
+     * @param {Object} delta - The delta object for time-based updates.
+     * @throws {Error} If the game session has not been started yet.
+     * @throws {Error} If the game session state is invalid.
+     */
     update(delta) {
         if (!this.started) {
             console.error('Game session not started yet.');
@@ -699,22 +639,22 @@ export class GameSessionManager {
         }
         switch (this.gameSessionState.state) {
             case this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS:
-                this.#updateGameSessionInProgress(delta);
+                this.#handleGameSessionInProgressUpdate(delta);
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_LIVES_LEFT:
-                this.#updateGameSessionLivesLeft(delta);
+                this.#handleGameSessionLivesLeftUpdate(delta);
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_PAUSED:
-                this.#updateGameSessionPaused();
+                this.#handleGameSessionPausedUpdate();
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT:
-                this.#updateGameSessionLeavePrompt(delta);
+                this.#handleGameSessionLeavePromptUpdate(delta);
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_LEVEL_CLEARED:
-                this.#updateGameSessionLevelCleared(delta);
+                this.#handleGameSessionLevelClearedUpdate(delta);
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_GAME_END:
-                this.#updateGameSessionGameEnd(delta);
+                this.#handleGameSessionGameEndUpdate(delta);
                 break;
             default:
                 console.error(MODULE_NAME_PREFIX + "Invalid game state: " + this.gameSessionState.state);
@@ -723,7 +663,7 @@ export class GameSessionManager {
     }
 }
 
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
 /**
  * Represents a game session.
  */

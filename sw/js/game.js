@@ -7,9 +7,6 @@ const module_name_prefix = 'game.js - ';
 const ARENA_ROWS = 11;
 const ARENA_COLS = 21;
 
-const ALIAS_AUDIO_CURSOR = 'cursor';
-const ALIAS_AUDIO_CURSOR_SUBMIT = 'cursor_submit';
-
 const DEFAULT_SETTINGS = {
     lives: 3,
     volume: true,
@@ -241,7 +238,6 @@ export class Game {
             if (this.screenContent.selected != null) {
                 switch (this.screenContent.selected) {
                     case 0:
-                        // TODO - upgrade to typing the number of lives
                         this.screenContent.options_values[this.screenContent.selected] = mod(this.screenContent.options_values[this.screenContent.selected] + 1, DEFAULT_SETTINGS.lives + 1);
                         this.settings.lives = this.screenContent.options_values[this.screenContent.selected];
                         break;
