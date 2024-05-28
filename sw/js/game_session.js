@@ -30,6 +30,7 @@ const INDEX_SCREEN_CONTENT_HUD_TEXT_TIME = 2;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE = 3;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES = 4;
 
+const MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT = 0.11;
 const BOMB_DURATION_MS = 3000; // 3 seconds
 const BOMB_CHANGE_TEXTURE_TIME_MS = 500; // 0.5 seconds
 const EXPLOSION_DURATION_MS = 500; // 0.5 second
@@ -140,7 +141,7 @@ export class GameSessionManager {
         this.bombs = [];
         this.explosions = [];
         // this.movementSpeed = 85;
-        this.movementSpeed = this.app.screen.height * 0.11;
+        this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
         settings.endless ? this.level = 1 : this.level = undefined;
 
         // flags
@@ -405,7 +406,7 @@ export class GameSessionManager {
 
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
-        this.movementSpeed = this.app.screen.height * 0.11;
+        this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
         this.basis_change = false;
     }
 
