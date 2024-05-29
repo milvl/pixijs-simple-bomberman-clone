@@ -70,6 +70,20 @@ export class SoundManager {
     }
 
     /**
+     * Plays the sound of new level.
+     */
+    playNewLevel() {
+        this.#playSound('new_level');
+    }
+
+    /**
+     * Plays the sound of player hit.
+     */
+    playPlayerHit() {
+        this.#playSound('player_hit');
+    }
+
+    /**
      * @param {boolean} value - The sound enabled value.
      */
     set soundEnabled(value) {

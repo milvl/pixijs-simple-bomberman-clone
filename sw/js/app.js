@@ -45,6 +45,8 @@ const MANIFEST = {
                 { alias: "cursor_submit", src: "./audio/cursor_submit.ogg"},
                 { alias: "door_appeared", src: "./audio/door_appeared.ogg"},
                 { alias: "explosion_sound", src: "./audio/explosion.ogg"},
+                { alias: "new_level", src: "./audio/new_level.ogg"},
+                { alias: "player_hit", src: "./audio/player_hit.ogg"},
             ]
         },
         {
