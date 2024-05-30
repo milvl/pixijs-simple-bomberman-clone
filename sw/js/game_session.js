@@ -150,7 +150,7 @@ export class GameSessionManager {
         this.playerMovementSprites = [this.textures.player_walk01, /*this.textures.player_walk02,*/ this.textures.player_walk03];
         this.currentPlayerMovementSpriteIndex = 0;
         this.playerHitScreenInfo = null;
-        this.levelChangeScreenInfo = null;
+        this.levelScreenInfo = null;
         
         // settings
         this.gameSessionState = null;
@@ -728,7 +728,7 @@ export class GameSessionManager {
                 // TODO game over
             }
             // reset timers
-            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LIVES_LEFT);
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN);
             return;
         }
 
@@ -737,10 +737,10 @@ export class GameSessionManager {
         this.playerHitScreenInfo.playerHitBlinkTime += delta.elapsedMS;
     }
 
-    #handleGameSessionLivesLeftUpdate(delta) {
-        if (!this.levelChangeScreenInfo) {
-            this.levelChangeScreenInfo = {};
-            this.levelChangeScreenInfo.levelChangeTime = 0;
+    #handleGameSessionLevelInfoScreen(delta) {
+        if (!this.levelScreenInfo) {
+            this.levelScreenInfo = {};
+            this.levelScreenInfo.levelChangeTime = 0;
 
             const background = new PIXI.Graphics();
             background.rect(0, 0, this.app.screen.width, this.app.screen.height);
@@ -748,18 +748,18 @@ export class GameSessionManager {
             this.screenContent.levelChangeElems.push(background);
             this.app.stage.addChild(background);
 
-            const { width: window_width, height: window_height } = this.app.screen;
+            const { width: windowWidth, height: windowHeight } = this.app.screen;
             const newLevelString = `Level: ${this.level}\nLives left: ${this.stats.lives}`;
-            const newLevelText = this.#getSizedText(newLevelString, window_width, window_height, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
-            newLevelText.x = (window_width - newLevelText.width) / 2;
-            newLevelText.y = (window_height - newLevelText.height) / 2;
+            const newLevelText = this.#getSizedText(newLevelString, windowWidth, windowHeight, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
+            newLevelText.x = (windowWidth - newLevelText.width) / 2;
+            newLevelText.y = (windowHeight - newLevelText.height) / 2;
             this.screenContent.levelChangeElems.push(newLevelText);
             this.app.stage.addChild(newLevelText);
 
             this.soundManager.playNewLevel();
         }
 
-        if (this.levelChangeScreenInfo.levelChangeTime >= DURATION_MS_LEVEL_CHANGE) {
+        if (this.levelScreenInfo.levelChangeTime >= DURATION_MS_LEVEL_CHANGE) {
             throw new Error('Not implemented yet.');
         }
     }
@@ -786,10 +786,6 @@ export class GameSessionManager {
         // TODO
     }
 
-    #handleGameSessionLevelClearedUpdate(delta) {
-        // TODO
-    }
-
     #handleGameSessionGameEndUpdate(delta) {
         // TODO
     }
@@ -813,17 +809,14 @@ export class GameSessionManager {
             case this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT:
                 this.#handleGameSessionPlayerHitUpdate(delta);
                 break;
-            case this.gameSessionState.GAME_SESSION_STATE_LIVES_LEFT:
-                this.#handleGameSessionLivesLeftUpdate(delta);
+            case this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN:
+                this.#handleGameSessionLevelInfoScreen(delta);
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_PAUSED:
                 this.#handleGameSessionPausedUpdate();
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT:
                 this.#handleGameSessionLeavePromptUpdate(delta);
-                break;
-            case this.gameSessionState.GAME_SESSION_STATE_LEVEL_CLEARED:
-                this.#handleGameSessionLevelClearedUpdate(delta);
                 break;
             case this.gameSessionState.GAME_SESSION_STATE_GAME_END:
                 this.#handleGameSessionGameEndUpdate(delta);

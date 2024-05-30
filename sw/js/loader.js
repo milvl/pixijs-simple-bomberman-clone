@@ -1,4 +1,4 @@
-let module_name_prefix = 'loader.js - ';
+let MODULE_NAME_PREFIX = 'loader.js - ';
 
 function pformat(obj) {
     return JSON.stringify(obj, null, 4);
@@ -23,12 +23,12 @@ async function loadAssetsManifest(manifest) {
         
         // load each asset in the bundle
         const allAssets = {};
-        for (let manifest_bundle of manifest.bundles) {
+        for (let manifestBundle of manifest.bundles) {
             const assets = {};
-            for (let asset of manifest_bundle.assets) {
+            for (let asset of manifestBundle.assets) {
                 assets[asset.alias] = await PIXI.Assets.load(asset.alias);
             }
-            allAssets[manifest_bundle.name] = assets;
+            allAssets[manifestBundle.name] = assets;
         }
         // console.log(module_name_prefix, 'All assets:', allAssets);
 
