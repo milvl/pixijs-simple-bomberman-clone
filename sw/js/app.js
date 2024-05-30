@@ -28,6 +28,7 @@ const MANIFEST = {
                 { alias: "bomb_ignited", src: "./img/bomb_ignited.png" },
                 { alias: "explosion", src: "./img/explosion_whole.png" },
                 { alias: "wall", src: "./img/wall.png" },
+                { alias: "breakable_wall", src: "./img/breakable_wall.png" },
                 { alias: "door", src: "./img/door.png" },
                 { alias: "ghost1", src: "./img/ghost1.png" },
                 { alias: "ghost2", src: "./img/ghost2.png" },

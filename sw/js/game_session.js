@@ -78,29 +78,29 @@ function parseTime(milliseconds) {
  * Checks if two rectangles (will) collide.
  * @param {Number} e1_x - The x-coordinate of the first element.
  * @param {Number} e1_y - The y-coordinate of the first element.
- * @param {Number} e1_width - The width of the first element.
- * @param {Number} e1_height - The height of the first element.
+ * @param {Number} e1Width - The width of the first element.
+ * @param {Number} e1Height - The height of the first element.
  * @param {Number} e2_x - The x-coordinate of the second element.
  * @param {Number} e2_y - The y-coordinate of the second element.
- * @param {Number} e2_width - The width of the second element.
- * @param {Number} e2_height - The height of the second element.
- * @param {Number} [e1_deltaX=0] - The delta x-coordinate of the first element (optional).
- * @param {Number} [e1_deltaY=0] - The delta y-coordinate of the first element (optional).
+ * @param {Number} e2Width - The width of the second element.
+ * @param {Number} e2Height - The height of the second element.
+ * @param {Number} [e1DeltaX=0] - The delta x-coordinate of the first element (optional).
+ * @param {Number} [e1DeltaY=0] - The delta y-coordinate of the first element (optional).
  * @returns {Boolean} True if the elements collide, false otherwise.
  */
-function checkCollision(e1_x, e1_y, e1_width, e1_height, e2_x, e2_y, e2_width, e2_height, e1_deltaX = 0, e1_deltaY = 0) {
-    const e1_nextX = e1_x + e1_deltaX;
-    const e1_nextY = e1_y + e1_deltaY;
+function checkCollision(e1_x, e1_y, e1Width, e1Height, e2_x, e2_y, e2Width, e2Height, e1DeltaX = 0, e1DeltaY = 0) {
+    const e1_nextX = e1_x + e1DeltaX;
+    const e1_nextY = e1_y + e1DeltaY;
 
     const e1_left = e1_nextX;
-    const e1_right = e1_nextX + e1_width;
+    const e1_right = e1_nextX + e1Width;
     const e1_top = e1_nextY;
-    const e1_bottom = e1_nextY + e1_height;
+    const e1_bottom = e1_nextY + e1Height;
 
     const e2_left = e2_x;
-    const e2_right = e2_x + e2_width;
+    const e2_right = e2_x + e2Width;
     const e2_top = e2_y;
-    const e2_bottom = e2_y + e2_height;
+    const e2_bottom = e2_y + e2Height;
 
     return !(e1_left >= e2_right ||
              e1_right <= e2_left ||
@@ -142,8 +142,10 @@ export class GameSessionManager {
         this.screenContent.arena = new Arena(app, textures, rows_count, cols_count);
         this.screenContent.player = null;
         this.screenContent.enemies = [];
+        this.screenContent.breakableWalls = [];
         this.screenContent.bombs = [];
         this.screenContent.explosions = [];
+        this.screenContent.exitDoor = null;
         this.screenContent.levelChangeElems = [];
 
         // other game session variables
@@ -165,6 +167,84 @@ export class GameSessionManager {
         this.playerMoving = false;
         this.playerMovingTime = 0;
         this.livesLeftScreenInfo = null;
+    }
+
+    /**
+     * Sets up the key inputs for the game session.
+     */
+    #setUpKeyInputs() {
+        // arrow keys for movement are handled on each frame update (to combat desync)
+        // but arrow keys will have functions assigned to change flags for movement
+
+        const arrowUpFunc = () => {
+            this.playerMoving = false;
+            this.playerMovingTime = 0;
+        }
+
+
+        const spaceFunc = () => {
+            if (this.started && this.screenContent.bombs.length < 1) {
+                this.bombPlaced = true;
+            }
+        }
+
+        const escFunc = () => {
+            throw new Error('ESCAPE KEY: Not implemented yet.');
+        }
+
+        const pauseFunc = () => {
+            if (this.started) {
+                if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
+                    this.key_inputs.left.release = null;
+                    this.key_inputs.right.release = null;
+                    this.key_inputs.space.press = null;
+                    this.key_inputs.esc.press = null;
+                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
+                }
+                else {
+                    this.key_inputs.left.release = arrowUpFunc;
+                    this.key_inputs.right.release = arrowUpFunc;
+                    this.key_inputs.space.press = spaceFunc;
+                    this.key_inputs.esc.press = escFunc;
+                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+                    this.#handleGameSessionPausedUpdate(true);
+                }
+            }
+        }
+
+        // arrow keys for movement
+        this.key_inputs.left.release = arrowUpFunc;
+        this.key_inputs.right.release = arrowUpFunc;
+        this.key_inputs.up.release = arrowUpFunc;
+        this.key_inputs.down.release = arrowUpFunc;
+        
+        // spacebar for bomb
+        this.key_inputs.space.press = spaceFunc;
+
+        // esc for returning to main menu (with prompt)
+        this.key_inputs.esc.press = escFunc;
+
+        // p for pausing the game
+        this.key_inputs.pause.press = pauseFunc;
+    }
+
+    /**
+     * Cleans up the key inputs for the game session.
+     * This is called when the game session is stopped.
+     * // TODO USE
+     */
+    #cleanUpKeyInputs() {
+        this.key_inputs.left.press = null;
+        this.key_inputs.left.release = null;
+        this.key_inputs.right.press = null;
+        this.key_inputs.right.release = null;
+        this.key_inputs.up.press = null;
+        this.key_inputs.up.release = null;
+        this.key_inputs.down.press = null;
+        this.key_inputs.down.release = null;
+        this.key_inputs.space.press = null;
+        this.key_inputs.esc.press = null;
+        this.key_inputs.pause.press = null;
     }
 
     /**
@@ -300,146 +380,53 @@ export class GameSessionManager {
         entity.y = entity.y * newHeightScale;
     }
 
+    #prepareEntities() {
+        // clear any existing entities
+        if (this.screenContent.player) {
+            this.app.stage.removeChild(this.screenContent.player);
+        }
+        for (let bomb of this.screenContent.bombs) {
+            this.app.stage.removeChild(bomb.bomb);
+        }
+        this.screenContent.bombs = [];
+        for (let explosion_instance of this.screenContent.explosions) {
+            for (let explosion of explosion_instance.explosions) {
+                this.app.stage.removeChild(explosion);
+            }
+        }
+        this.screenContent.explosions = [];
+
+        // walls // TODO walls
+
+        // enemies // TODO enemies
+
+        // player
+        if (!this.screenContent.player) {
+            this.screenContent.player = new PIXI.Sprite(this.textures.player);
+        }
+
+        this.#spawnEntity(this.screenContent.player, null, null, SCALE_PLAYER_TO_WALL);
+    }
+
     /**
      * Updates the entity.
      * @param {PIXI.Sprite} entity - The entity to update.
      * @param {Number} deltaX - The change in x-coordinate.
      * @param {Number} deltaY - The change in y-coordinate. 
      */
-    #updateEntity(entity, deltaX, deltaY) {
-        // check if the new position is valid before updating
-        if (!this.screenContent.arena.checkWallCollision(entity, deltaX)) {
+    #updateEntityPosition(entity, deltaX, deltaY) {
+        // TODO NOTE: handled separately to allow sliding along objects
+        let {horizontal: willCollideHorizontalBomb, vertical: willCollideVerticalBomb} = this.#checkBombCollision(entity, deltaX, deltaY);
+        let {horizontal: willCollideHorizontalWall, vertical: willCollideVerticalWall} = this.screenContent.arena.checkWallCollision(entity, deltaX, deltaY);
+
+        if (!willCollideHorizontalBomb && !willCollideHorizontalWall) {
             entity.x += deltaX;
         }
-        if (!this.screenContent.arena.checkWallCollision(entity, 0, deltaY)) {
+        if (!willCollideVerticalBomb && !willCollideVerticalWall) {
             entity.y += deltaY;
         }
-        this.app.stage.removeChild(entity);
-        this.app.stage.addChild(entity);
 
         // TODO hit check
-    }
-
-    /**
-     * Sets up the key inputs for the game session.
-     */
-    #setUpKeyInputs() {
-        // arrow keys for movement are handled on each frame update (to combat desync)
-        // but arrow keys will have functions assigned to change flags for movement
-
-        const arrowUpFunc = () => {
-            this.playerMoving = false;
-            this.playerMovingTime = 0;
-        }
-
-
-        const spaceFunc = () => {
-            if (this.started && this.screenContent.bombs.length < 1) {
-                this.bombPlaced = true;
-            }
-        }
-
-        const escFunc = () => {
-            throw new Error('ESCAPE KEY: Not implemented yet.');
-        }
-
-        const pauseFunc = () => {
-            if (this.started) {
-                if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
-                    this.key_inputs.left.release = null;
-                    this.key_inputs.right.release = null;
-                    this.key_inputs.space.press = null;
-                    this.key_inputs.esc.press = null;
-                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
-                }
-                else {
-                    this.key_inputs.left.release = arrowUpFunc;
-                    this.key_inputs.right.release = arrowUpFunc;
-                    this.key_inputs.space.press = spaceFunc;
-                    this.key_inputs.esc.press = escFunc;
-                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
-                    this.#handleGameSessionPausedUpdate(true);
-                }
-            }
-        }
-
-        // arrow keys for movement
-        this.key_inputs.left.release = arrowUpFunc;
-        this.key_inputs.right.release = arrowUpFunc;
-        this.key_inputs.up.release = arrowUpFunc;
-        this.key_inputs.down.release = arrowUpFunc;
-        
-        // spacebar for bomb
-        this.key_inputs.space.press = spaceFunc;
-
-        // esc for returning to main menu (with prompt)
-        this.key_inputs.esc.press = escFunc;
-
-        // p for pausing the game
-        this.key_inputs.pause.press = pauseFunc;
-    }
-
-    /**
-     * Cleans up the key inputs for the game session.
-     * This is called when the game session is stopped.
-     * // TODO USE
-     */
-    #cleanUpKeyInputs() {
-        this.key_inputs.left.press = null;
-        this.key_inputs.left.release = null;
-        this.key_inputs.right.press = null;
-        this.key_inputs.right.release = null;
-        this.key_inputs.up.press = null;
-        this.key_inputs.up.release = null;
-        this.key_inputs.down.press = null;
-        this.key_inputs.down.release = null;
-        this.key_inputs.space.press = null;
-        this.key_inputs.esc.press = null;
-        this.key_inputs.pause.press = null;
-    }
-
-    /**
-     * Starts the game session.
-     */
-    start() {
-        this.#setUpKeyInputs();
-        this.gameSessionState = new GameSessionState();
-
-        this.screenContent.arena.draw();
-        this.#drawStats();
-        // DEBUG add player sprite (now using bunny sprite)
-        this.screenContent.player = new PIXI.Sprite(this.textures.player);
-        this.#spawnEntity(this.screenContent.player, null, null, SCALE_PLAYER_TO_WALL);
-
-        this.started = true;
-        // TODO: add player and enemies
-    }
-
-    /**
-     * Redraws the game session. Used when the screen is resized.
-     */
-    redraw() {
-        this.basis_change = true;
-        
-        this.screenContent.arena.redraw();
-        this.#drawStats();
-        this.#redrawEntity(this.screenContent.player, SCALE_PLAYER_TO_WALL);
-        for (let bomb of this.screenContent.bombs) {
-            this.#redrawEntity(bomb.bomb, SCALE_BOMB_TO_WALL);
-        }
-        for (let explosion_instance of this.screenContent.explosions) {
-            for (let explosion of explosion_instance.explosions) {
-                this.#redrawEntity(explosion);
-            }
-        }
-        if (this.screenContent.pauseSign) {
-            this.#redrawPauseSign();
-        }
-
-        this.prevWidth = this.app.screen.width;
-        this.prevHeight = this.app.screen.height;
-        this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
-        this.basis_change = false;
     }
 
     /**
@@ -450,6 +437,20 @@ export class GameSessionManager {
         this.screenContent.hudElems[INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE].text = `Score:\n${this.stats.score}`;
         this.screenContent.hudElems[INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES].text = `Lives:\n${this.stats.lives}`;
         // this.#drawStats(); // to ensure the text is updated and scaled properly (can be overlayed because hud is always at the top of the screen)
+    }
+
+    #playerHit() {
+        // TODO enemies hit check
+        // explosion hit check
+        for (let explosionInstance of this.screenContent.explosions) {
+            for (let explosion of explosionInstance.explosions) {
+                const explosionBounds = explosion.getBounds();
+                const playerBounds = this.screenContent.player.getBounds();
+                if (checkCollision(explosionBounds.x, explosionBounds.y, explosionBounds.width, explosionBounds.height, playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height)) {
+                    return true;
+                }
+            }
+        }
     }
 
     /**
@@ -499,7 +500,7 @@ export class GameSessionManager {
             this.screenContent.player.texture = this.textures.player;
         }
         
-        this.#updateEntity(this.screenContent.player, deltaX, deltaY);
+        this.#updateEntityPosition(this.screenContent.player, deltaX, deltaY);
     }
 
     /**
@@ -542,6 +543,53 @@ export class GameSessionManager {
         explosionInstance.time = this.stats.time;
         this.screenContent.explosions.push(explosionInstance);
         this.soundManager.playExplosion();
+    }
+
+    /**
+     * Updates the explosions on the screen.
+     */
+    #updateExplosions() {
+        for (let explosion_instance of this.screenContent.explosions) {
+            const explosion_time = this.stats.time - explosion_instance.time;
+            if (explosion_time >= EXPLOSION_DURATION_MS) {
+                for (let explosion of explosion_instance.explosions) {
+                    this.app.stage.removeChild(explosion);
+                }
+                this.screenContent.explosions.splice(this.screenContent.explosions.indexOf(explosion_instance), 1);
+            }
+        }
+    }
+
+    /**
+     * Checks if the entity will collide with a bomb.
+     * Information returned in separate horizontal and vertical flags 
+     * to allow sliding along objects.
+     * @param {PIXI.Sprite} entity - The entity to check.
+     * @param {Number} deltaX - The change in x-coordinate.
+     * @param {Number} deltaY - The change in y-coordinate.
+     * @returns {Object} An object with the horizontal and vertical collision flags.
+     */
+    #checkBombCollision(entity, deltaX, deltaY) {
+        let willCollideHorizontal = false;
+        let willCollideVertical = false;
+
+        const {minX, minY} = entity.getBounds();
+
+        for (let bomb of this.screenContent.bombs) {
+            const bombBounds = bomb.bomb.getBounds();
+            // if player is already colliding with bomb, let them leave
+            if (checkCollision(minX, minY, entity.width, entity.height, bombBounds.x, bombBounds.y, bombBounds.width, bombBounds.height)) {
+                return {willCollideHorizontal, willCollideVertical};
+            }
+            if (!willCollideHorizontal) {
+                willCollideHorizontal = checkCollision(minX, minY, entity.width, entity.height, bombBounds.x, bombBounds.y, bombBounds.width, bombBounds.height, deltaX);
+            }
+            if (!willCollideVertical) {
+                willCollideVertical = checkCollision(minX, minY, entity.width, entity.height, bombBounds.x, bombBounds.y, bombBounds.width, bombBounds.height, 0, deltaY);
+            }
+        }
+
+        return {horizontal: willCollideHorizontal, vertical: willCollideVertical};
     }
 
     /**
@@ -589,20 +637,6 @@ export class GameSessionManager {
         }
     }
 
-    #playerHit() {
-        // TODO enemies hit check
-        // explosion hit check
-        for (let explosionInstance of this.screenContent.explosions) {
-            for (let explosion of explosionInstance.explosions) {
-                const explosionBounds = explosion.getBounds();
-                const playerBounds = this.screenContent.player.getBounds();
-                if (checkCollision(explosionBounds.x, explosionBounds.y, explosionBounds.width, explosionBounds.height, playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height)) {
-                    return true;
-                }
-            }
-        }
-    }
-
     /**
      * Hit checks the entities on the screen and 
      * handles the consequences of the hits.
@@ -617,16 +651,41 @@ export class GameSessionManager {
     }
 
     /**
-     * Updates the explosions on the screen.
+     * Updates the exit door on the screen.
+     * The exit door is spawned when all enemies are defeated and all breakable walls are destroyed.
+     * The exit door is removed when enemies are present or breakable walls are present.
      */
-    #updateExplosions() {
-        for (let explosion_instance of this.screenContent.explosions) {
-            const explosion_time = this.stats.time - explosion_instance.time;
-            if (explosion_time >= EXPLOSION_DURATION_MS) {
-                for (let explosion of explosion_instance.explosions) {
-                    this.app.stage.removeChild(explosion);
-                }
-                this.screenContent.explosions.splice(this.screenContent.explosions.indexOf(explosion_instance), 1);
+    #updateExitDoor() {
+        // door available
+        if (this.screenContent.enemies.length === 0 && this.screenContent.breakableWalls.length === 0) {
+            // if door not already spawned, spawn it (keep player on top)
+            if (!this.screenContent.exitDoor) {
+                this.screenContent.exitDoor = new PIXI.Sprite(this.textures.door);
+                // put to center of the arena
+                const { x, y } = this.screenContent.arena.gridToCanvas(Math.floor(this.screenContent.arena.colsCount / 2), 
+                                                                       Math.floor(this.screenContent.arena.rowsCount / 2),
+                                                                       this.app.screen.width, 
+                                                                       this.app.screen.height);
+                this.#spawnEntity(this.screenContent.exitDoor, x, y);
+                // keep player on top
+                this.app.stage.removeChild(this.screenContent.player);
+                this.app.stage.addChild(this.screenContent.player);
+            }
+
+            // check if doors completely contain player
+            const playerBounds = this.screenContent.player.getBounds();
+            const doorBounds = this.screenContent.exitDoor.getBounds();
+            if (playerBounds.x >= doorBounds.x && playerBounds.x + playerBounds.width <= doorBounds.x + doorBounds.width &&
+                playerBounds.y >= doorBounds.y && playerBounds.y + playerBounds.height <= doorBounds.y + doorBounds.height) {
+                throw new Error('EXIT DOOR: Not implemented yet.');
+            }
+
+        }
+        // door not available
+        else {
+            if (this.screenContent.exitDoor) {
+                this.app.stage.removeChild(this.screenContent.exitDoor);
+                this.screenContent.exitDoor = null;
             }
         }
     }
@@ -676,7 +735,7 @@ export class GameSessionManager {
                 return;
             }
             this.#updateExplosions();
-            // this.#updateScore();
+            this.#updateExitDoor();
             // this.#handleLevelEnd();
             // this.#handleGameEnd();
         }
@@ -760,8 +819,19 @@ export class GameSessionManager {
         }
 
         if (this.levelScreenInfo.levelChangeTime >= DURATION_MS_LEVEL_CHANGE) {
-            throw new Error('Not implemented yet.');
+            this.levelScreenInfo = null;
+            for (let elem of this.screenContent.levelChangeElems) {
+                this.app.stage.removeChild(elem);
+            }
+            this.screenContent.levelChangeElems = [];
+
+            this.#setUpKeyInputs();
+            this.#prepareEntities();
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+            return;
         }
+
+        this.levelScreenInfo.levelChangeTime += delta.elapsedMS;
     }
 
     /**
@@ -788,6 +858,52 @@ export class GameSessionManager {
 
     #handleGameSessionGameEndUpdate(delta) {
         // TODO
+    }
+
+    /**
+     * Starts the game session.
+     */
+    start() {
+        this.#setUpKeyInputs();
+        this.gameSessionState = new GameSessionState();
+
+        this.screenContent.arena.draw();
+        this.#drawStats();
+        // DEBUG add player sprite (now using bunny sprite)
+        this.#prepareEntities();
+
+        this.started = true;
+        // TODO: add player and enemies
+    }
+
+    /**
+     * Redraws the game session. Used when the screen is resized.
+     */
+    redraw() {
+        this.basis_change = true;
+        
+        this.screenContent.arena.redraw();
+        this.#drawStats();
+        this.#redrawEntity(this.screenContent.player, SCALE_PLAYER_TO_WALL);
+        for (let bomb of this.screenContent.bombs) {
+            this.#redrawEntity(bomb.bomb, SCALE_BOMB_TO_WALL);
+        }
+        for (let explosion_instance of this.screenContent.explosions) {
+            for (let explosion of explosion_instance.explosions) {
+                this.#redrawEntity(explosion);
+            }
+        }
+        if (this.screenContent.pauseSign) {
+            this.#redrawPauseSign();
+        }
+        if (this.screenContent.exitDoor) {
+            this.#redrawEntity(this.screenContent.exitDoor);
+        }
+
+        this.prevWidth = this.app.screen.width;
+        this.prevHeight = this.app.screen.height;
+        this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
+        this.basis_change = false;
     }
 
     /**
@@ -913,28 +1029,37 @@ class Arena {
     /**
       * Checks if an element will collide with a wall 
       * based on its velocity and position.
+      * Information returned in separate horizontal and vertical flags 
+      * to allow sliding along walls.
       * @param {PIXI.Sprite} elem - The element to check for collision.
       * @param {Number} [deltaX=0] - The change in x-coordinate.
       * @param {Number} [deltaY=0] - The change in y-coordinate.
+      * @returns {Object} An object with the horizontal and vertical collision flags.
       */
     checkWallCollision(elem, deltaX = 0, deltaY = 0) {
+        let willCollideHorizontal = false;
+        let willCollideVertical = false;
         const elemBounds = elem.getBounds();
-        // const wallElems = this.grid.flat().filter(cell => cell.type === GRID_CELL_TYPE.WALL).map(cell => cell.elem);
-        // for (const wall of wallElems) {
         for (let row_index = 0; row_index < this.rowsCount; row_index++) {
             for (let col_index = 0; col_index < this.colsCount; col_index++) {
                 if (this.grid[row_index][col_index].type !== GRID_CELL_TYPE.WALL) {
                     continue;
                 }
                 const wall = this.grid[row_index][col_index].elem;
-
                 const wallBounds = wall.getBounds();
-                if (checkCollision(elemBounds.x, elemBounds.y, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, deltaX, deltaY)) {
-                    return true;
+
+                if (!willCollideHorizontal) {
+                    willCollideHorizontal = checkCollision(elemBounds.minX, elemBounds.minY, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, deltaX);
                 }
+                if (!willCollideVertical) {
+                    willCollideVertical = checkCollision(elemBounds.minX, elemBounds.minY, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, 0, deltaY);
+                }
+                // if (checkCollision(elemBounds.x, elemBounds.y, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, deltaX, deltaY)) {
+                //     return true;
+                // }
             }
         }
-        return false;
+        return {horizontal: willCollideHorizontal, vertical: willCollideVertical};
     }
 
     /**
