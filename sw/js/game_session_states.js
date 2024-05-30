@@ -5,11 +5,13 @@ const MODULE_NAME_PREFIX = 'game_session_states.js - ';
  */
 export class GameSessionState {
     GAME_SESSION_STATE_IN_PROGRESS = 0;
-    GAME_SESSION_STATE_LIVES_LEFT = 1;
-    GAME_SESSION_STATE_PAUSED = 2;
-    GAME_SESSION_STATE_LEAVE_PROMPT = 3;
-    GAME_SESSION_STATE_LEVEL_CLEARED = 4;
-    GAME_SESSION_STATE_GAME_END = 5;
+    GAME_SESSION_STATE_PLAYER_HIT = 1;
+    GAME_SESSION_STATE_LIVES_LEFT = 2;
+    GAME_SESSION_STATE_PAUSED = 3;
+    GAME_SESSION_STATE_LEAVE_PROMPT = 4;
+    GAME_SESSION_STATE_LEVEL_CLEARED = 5;
+    GAME_SESSION_STATE_GAME_END = 6;
+    GAME_SESSION_STATE_RETURN_TO_MENU = 7;
 
     constructor() {
         this.gameState = this.GAME_SESSION_STATE_IN_PROGRESS;
@@ -17,68 +19,84 @@ export class GameSessionState {
 
     /**
      * Attempts to switch to a new game state.
-     * @param {Number} gameState 
+     * @param {Number} newState 
      */
-    switchToGameState(gameState) {
+    switchToGameState(newState) {
         switch (this.state) {
             case this.GAME_SESSION_STATE_IN_PROGRESS:
-                switch (gameState) {
-                    case this.GAME_SESSION_STATE_LIVES_LEFT:
+                switch (newState) {
+                    case this.GAME_SESSION_STATE_PLAYER_HIT:
                     case this.GAME_SESSION_STATE_PAUSED:
                     case this.GAME_SESSION_STATE_LEAVE_PROMPT:
                     case this.GAME_SESSION_STATE_LEVEL_CLEARED:
                     case this.GAME_SESSION_STATE_GAME_END:
-                        this.gameState = gameState;
+                        this.gameState = newState;
+                        console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
                         break;
                     default:
-                        console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                        throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                        console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
+                        throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
+                }
+                break;
+
+            case this.GAME_SESSION_STATE_PLAYER_HIT:
+                if (newState === this.GAME_SESSION_STATE_LIVES_LEFT) {
+                    this.gameState = newState;
+                    console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
+                }
+                else {
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
                 }
                 break;
             
             case this.GAME_SESSION_STATE_LIVES_LEFT:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
+                if (newState === this.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.gameState = newState;
+                    console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
                 }
                 else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
                 }
                 break;
             
             case this.GAME_SESSION_STATE_PAUSED:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
+                if (newState === this.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.gameState = newState;
+                    console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
                 }
                 else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
                 }
                 break;
             
             case this.GAME_SESSION_STATE_LEAVE_PROMPT:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
+                if (newState === this.GAME_SESSION_STATE_IN_PROGRESS || newState === this.GAME_SESSION_STATE_RETURN_TO_MENU) {
+                    this.gameState = newState;
+                    console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
                 }
                 else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
                 }    
                 break;
             
             case this.GAME_SESSION_STATE_LEVEL_CLEARED:
-                if (gameState === this.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.gameState = gameState;
+                if (newState === this.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.gameState = newState;
+                    console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
                 }
                 else {
-                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
-                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(gameState)}`);
+                    console.error(`${MODULE_NAME_PREFIX}Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
+                    throw new Error(`Invalid game state from ${this.getStateName(this.state)} to ${this.getStateName(newState)}`);
                 }
                 break;
 
             default:
-                console.error(`${MODULE_NAME_PREFIX}Invalid game state for setup: ${gameState}`);
-                throw new Error(`Invalid game state for setup: ${gameState}`);
+                console.error(`${MODULE_NAME_PREFIX}Invalid game state for setup: ${newState}`);
+                throw new Error(`Invalid game state for setup: ${newState}`);
 
         }
     }
@@ -96,6 +114,8 @@ export class GameSessionState {
         switch (state) {
             case this.GAME_SESSION_STATE_IN_PROGRESS:
                 return 'In Progress';
+            case this.GAME_SESSION_STATE_PLAYER_HIT:
+                return 'Player Hit';
             case this.GAME_SESSION_STATE_LIVES_LEFT:
                 return 'Lives Left';
             case this.GAME_SESSION_STATE_PAUSED:

@@ -32,11 +32,14 @@ const INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES = 4;
 
 const MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT = 0.11;
 
-const BOMB_DURATION_MS = 3000; // 3 seconds
-const BOMB_CHANGE_TEXTURE_TIME_MS = 500; // 0.5 seconds
+const DURATION_MS_BOMB = 3000; // 3 seconds
+const TIME_CHANGE_MS_BOMB_TEXTURE = 500; // 0.5 seconds
 const EXPLOSION_DURATION_MS = 500; // 0.5 second
 const EASTER_EGG_TIME = 359990000; // 59 minutes 59 seconds
-const SPRITE_MOVEMENT_CHANGE_TIME = 250; // 0.25 seconds
+const TIME_CHANGE_MS_MOVEMENT_SPRITE = 250; // 0.25 seconds
+const DURATION_MS_PLAYER_HIT = 3000; // 3 seconds
+const DURATION_MS_PLAYER_HIT_BLINK = 100; // 0.1 seconds
+const DURATION_MS_LEVEL_CHANGE = 5000; // 5 seconds
 
 const GRID_CELL_TYPE = {
     WALL: 1,
@@ -141,23 +144,27 @@ export class GameSessionManager {
         this.screenContent.enemies = [];
         this.screenContent.bombs = [];
         this.screenContent.explosions = [];
+        this.screenContent.levelChangeElems = [];
 
         // other game session variables
         this.playerMovementSprites = [this.textures.player_walk01, /*this.textures.player_walk02,*/ this.textures.player_walk03];
         this.currentPlayerMovementSpriteIndex = 0;
+        this.playerHitScreenInfo = null;
+        this.levelChangeScreenInfo = null;
         
         // settings
         this.gameSessionState = null;
-        this.lives_left = settings.lives;
+        this.livesLeft = settings.lives;
         // this.movementSpeed = 85;
         this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
-        settings.endless ? this.level = 1 : this.level = undefined;
+        this.level = 1;
 
         // flags
         this.started = false;
         this.bombPlaced = false;
         this.playerMoving = false;
         this.playerMovingTime = 0;
+        this.livesLeftScreenInfo = null;
     }
 
     /**
@@ -259,10 +266,10 @@ export class GameSessionManager {
      * @param {Number} [scale=1] - The scale of the entity.
      */
     #spawnEntity(entity, start_x = null, start_y = null, scale = 1) {
-        let wall_width = this.screenContent.arena.wall_width
-        let wall_height = this.screenContent.arena.wall_height
-        entity.width = wall_width * scale;
-        entity.height = wall_height * scale; //TODO SCALING FOR SPRITES
+        let wallWidth = this.screenContent.arena.wallWidth
+        let wallHeight = this.screenContent.arena.wallHeight
+        entity.width = wallWidth * scale;
+        entity.height = wallHeight * scale; //TODO SCALING FOR SPRITES
         let { x, y } = { x: null, y: null };
         if (start_x !== null && start_y !== null) {
             x = start_x;
@@ -270,8 +277,8 @@ export class GameSessionManager {
         } else {
             ({ x, y } = this.screenContent.arena.randomEmptySpace());
         }
-        entity.x = x + (wall_width - entity.width) / 2;
-        entity.y = y + (wall_height - entity.height) / 2;
+        entity.x = x + (wallWidth - entity.width) / 2;
+        entity.y = y + (wallHeight - entity.height) / 2;
         this.app.stage.addChild(entity);
     }
 
@@ -281,12 +288,10 @@ export class GameSessionManager {
      * @param {Number} [scale=1] - The scale of the entity.
      */
     #redrawEntity(entity, scale = 1) {
-        app.stage.removeChild(entity);
-        app.stage.addChild(entity);
-        const wall_width = this.screenContent.arena.wall_width
-        const wall_height = this.screenContent.arena.wall_height
-        entity.width = wall_width * scale;
-        entity.height = wall_height * scale;
+        const wallWidth = this.screenContent.arena.wallWidth
+        const wallHeight = this.screenContent.arena.wallHeight
+        entity.width = wallWidth * scale;
+        entity.height = wallHeight * scale;
         
         // transform old coordinates to new coordinates
         const newWidthScale = this.app.screen.width / this.prevWidth;
@@ -302,13 +307,6 @@ export class GameSessionManager {
      * @param {Number} deltaY - The change in y-coordinate. 
      */
     #updateEntity(entity, deltaX, deltaY) {
-        // if (deltaX !== 0 || deltaY !== 0) {
-            // rotate the player sprite by tiny amount as a movement indicator
-            // entity.rotation += 0.01 * this.movementMock;
-            // if (entity.rotation > 0.1 || entity.rotation < -0.1)
-            //     this.movementMock = -this.movementMock;
-        // }
-
         // check if the new position is valid before updating
         if (!this.screenContent.arena.checkWallCollision(entity, deltaX)) {
             entity.x += deltaX;
@@ -423,7 +421,7 @@ export class GameSessionManager {
     redraw() {
         this.basis_change = true;
         
-        this.screenContent.arena.draw();
+        this.screenContent.arena.redraw();
         this.#drawStats();
         this.#redrawEntity(this.screenContent.player, SCALE_PLAYER_TO_WALL);
         for (let bomb of this.screenContent.bombs) {
@@ -435,9 +433,7 @@ export class GameSessionManager {
             }
         }
         if (this.screenContent.pauseSign) {
-            this.app.stage.removeChild(this.screenContent.pauseSign);
-            this.screenContent.pauseSign = null;
-            this.#handleGameSessionPausedUpdate();
+            this.#redrawPauseSign();
         }
 
         this.prevWidth = this.app.screen.width;
@@ -494,10 +490,10 @@ export class GameSessionManager {
         if (this.playerMoving) {
             this.playerMovingTime += delta.elapsedMS;
 
-            if (this.playerMovingTime > SPRITE_MOVEMENT_CHANGE_TIME) {
+            if (this.playerMovingTime > TIME_CHANGE_MS_MOVEMENT_SPRITE) {
                 this.currentPlayerMovementSpriteIndex = (this.currentPlayerMovementSpriteIndex + 1) % this.playerMovementSprites.length;
                 this.screenContent.player.texture = this.playerMovementSprites[this.currentPlayerMovementSpriteIndex];
-                this.playerMovingTime -= SPRITE_MOVEMENT_CHANGE_TIME;
+                this.playerMovingTime -= TIME_CHANGE_MS_MOVEMENT_SPRITE;
             }
         } else {
             this.screenContent.player.texture = this.textures.player;
@@ -513,12 +509,12 @@ export class GameSessionManager {
      */
     #createExplosion(cellX, cellY) {
         // sanity check
-        if (cellX <= 0 || cellX >= this.screenContent.arena.cols_count - 1 || cellY <= 0 || cellY >= this.screenContent.arena.rows_count - 1) {
+        if (cellX <= 0 || cellX >= this.screenContent.arena.colsCount - 1 || cellY <= 0 || cellY >= this.screenContent.arena.rowsCount - 1) {
             console.error(MODULE_NAME_PREFIX, 'Invalid bomb detonation coordinates:', cellX, cellY);
             return;
         }
 
-        const explosion_instance = {explosions: [], time: null};
+        const explosionInstance = {explosions: [], time: null};
 
         // explosion positions
         const {centerX, centerY} = {centerX: cellX, centerY: cellY};
@@ -533,18 +529,18 @@ export class GameSessionManager {
         let explosion = new PIXI.Sprite(this.textures.explosion);
         let { x: x_center, y: y_center } = this.screenContent.arena.gridToCanvas(centerX, centerY, this.app.screen.width, this.app.screen.height);
         this.#spawnEntity(explosion, x_center, y_center);
-        explosion_instance.explosions.push(explosion);
+        explosionInstance.explosions.push(explosion);
         // all directions
         for (let dir of spread) {
-            if (this.screenContent.arena.grid[dir.y][dir.x] === GRID_CELL_TYPE.EMPTY) {
+            if (this.screenContent.arena.grid[dir.y][dir.x].type === GRID_CELL_TYPE.EMPTY) {
                 explosion = new PIXI.Sprite(this.textures.explosion);
                 let { x, y } = this.screenContent.arena.gridToCanvas(dir.x, dir.y, this.app.screen.width, this.app.screen.height);
                 this.#spawnEntity(explosion, x, y);
-                explosion_instance.explosions.push(explosion);
+                explosionInstance.explosions.push(explosion);
             }
         }
-        explosion_instance.time = this.stats.time;
-        this.screenContent.explosions.push(explosion_instance);
+        explosionInstance.time = this.stats.time;
+        this.screenContent.explosions.push(explosionInstance);
         this.soundManager.playExplosion();
     }
 
@@ -576,15 +572,15 @@ export class GameSessionManager {
 
         // update each bomb
         for (let bomb of this.screenContent.bombs) {
-            const bomb_time_placed = this.stats.time - bomb.time;
+            const bombTimePlaced = this.stats.time - bomb.time;
 
             // texture swapping
-            const bomb_change_texture = Math.round(bomb_time_placed / BOMB_CHANGE_TEXTURE_TIME_MS) % 2;
-            const bomb_textures = [this.textures.bomb, this.textures.bomb_ignited];
-            bomb.bomb.texture = bomb_textures[bomb_change_texture];
+            const bombChangeTexture = Math.round(bombTimePlaced / TIME_CHANGE_MS_BOMB_TEXTURE) % 2;
+            const bombTextures = [this.textures.bomb, this.textures.bomb_ignited];
+            bomb.bomb.texture = bombTextures[bombChangeTexture];
 
             // bomb is to be detonated
-            if (bomb_time_placed >= BOMB_DURATION_MS) {
+            if (bombTimePlaced >= DURATION_MS_BOMB) {
                 this.app.stage.removeChild(bomb.bomb);
 
                 this.#createExplosion(bomb.cellX, bomb.cellY);
@@ -593,20 +589,15 @@ export class GameSessionManager {
         }
     }
 
-    #hitcheckPlayer() {
+    #playerHit() {
         // TODO enemies hit check
         // explosion hit check
-        for (let explosion_instance of this.screenContent.explosions) {
-            for (let explosion of explosion_instance.explosions) {
-                const explosion_bounds = explosion.getBounds();
-                const player_bounds = this.screenContent.player.getBounds();
-                console.log(MODULE_NAME_PREFIX, 'Explosion bounds:', explosion_bounds);
-                console.log(MODULE_NAME_PREFIX, 'Explosion width:', explosion_bounds.width);
-                if (checkCollision(explosion_bounds.x, explosion_bounds.y, explosion_bounds.width, explosion_bounds.height, player_bounds.x, player_bounds.y, player_bounds.width, player_bounds.height)) {
-                    this.soundManager.playPlayerHit();
-                    // remove this explosion sprite
-                    this.app.stage.removeChild(explosion);
-                    explosion_instance.explosions.splice(explosion_instance.explosions.indexOf(explosion), 1);
+        for (let explosionInstance of this.screenContent.explosions) {
+            for (let explosion of explosionInstance.explosions) {
+                const explosionBounds = explosion.getBounds();
+                const playerBounds = this.screenContent.player.getBounds();
+                if (checkCollision(explosionBounds.x, explosionBounds.y, explosionBounds.width, explosionBounds.height, playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height)) {
+                    return true;
                 }
             }
         }
@@ -618,7 +609,11 @@ export class GameSessionManager {
      * // TODO not complete
      */
     #hitcheckEntities() {
-        this.#hitcheckPlayer();
+        if (this.#playerHit()) {
+            this.soundManager.playPlayerHit();
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT);
+            return;
+        }
     }
 
     /**
@@ -637,6 +632,31 @@ export class GameSessionManager {
     }
 
     /**
+     * Draws the pause sign on the screen.
+     */
+    #drawPauseSign() {
+        const { width: windowWidth, height: windowHeight } = this.app.screen;
+        const pauseSign = this.#getSizedText('PAUSED', windowWidth, windowHeight, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
+        pauseSign.x = (windowWidth - pauseSign.width) / 2;
+        pauseSign.y = (windowHeight - pauseSign.height) / 2;
+        this.screenContent.pauseSign = pauseSign;
+        this.app.stage.addChild(pauseSign);
+    }
+
+    /**
+     * Redraws the pause sign on the screen.
+     * This is called when the screen is resized.
+     */
+    #redrawPauseSign() {
+        const { width: windowWidth, height: windowHeight } = this.app.screen;
+        this.app.stage.removeChild(this.screenContent.pauseSign);
+        this.screenContent.pauseSign = this.#getSizedText('PAUSED', windowWidth, windowHeight, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
+        this.screenContent.pauseSign.x = (windowWidth - this.screenContent.pauseSign.width) / 2;
+        this.screenContent.pauseSign.y = (windowHeight - this.screenContent.pauseSign.height) / 2;
+        this.app.stage.addChild(this.screenContent.pauseSign);
+    }
+
+    /**
      * Handles updating the game session when it is in progress.
      * Does not update when the screen is being resized.
      * @param {Object} delta - The delta object for time-based updates.
@@ -652,6 +672,9 @@ export class GameSessionManager {
             // this.#updateEnemyMovement(delta);
             this.#updateBombs();
             this.#hitcheckEntities();
+            if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS) {
+                return;
+            }
             this.#updateExplosions();
             // this.#updateScore();
             // this.#handleLevelEnd();
@@ -659,8 +682,86 @@ export class GameSessionManager {
         }
     }
 
+    #handleGameSessionPlayerHitUpdate(delta) {
+        if (this.key_inputs.left.release 
+            || this.key_inputs.right.release 
+            || this.key_inputs.up.release 
+            || this.key_inputs.down.release
+            || this.key_inputs.space.press
+            || this.key_inputs.esc.press
+            || this.key_inputs.pause.press) 
+        {
+            this.#cleanUpKeyInputs();
+        }
+
+        // initialize player hit screen info
+        if (!this.playerHitScreenInfo) {
+            if (this.playerMoving) {
+                this.playerMoving = false;
+            }
+            // get player to be on top of everything
+            this.app.stage.removeChild(this.screenContent.player);
+            this.app.stage.addChild(this.screenContent.player);
+        
+            this.playerHitScreenInfo = {};
+            this.playerHitScreenInfo.playerHitTime = 0;
+            this.playerHitScreenInfo.playerHitBlinkTime = 0;
+        }
+
+        // blink the player sprite
+        if (this.playerHitScreenInfo.playerHitBlinkTime >= DURATION_MS_PLAYER_HIT_BLINK) {
+            if (this.screenContent.player.visible) {
+                this.screenContent.player.visible = false;
+            }
+            else {
+                this.screenContent.player.visible = true;
+
+            }
+            this.playerHitScreenInfo.playerHitBlinkTime -= DURATION_MS_PLAYER_HIT_BLINK;
+        }
+
+        // player hit timer check
+        if (this.playerHitScreenInfo.playerHitTime >= DURATION_MS_PLAYER_HIT) {
+            this.playerHitScreenInfo = null;
+            this.stats.lives -= 1;
+            if (this.stats.lives <= 0) {
+                // TODO game over
+            }
+            // reset timers
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LIVES_LEFT);
+            return;
+        }
+
+        // update timers each update
+        this.playerHitScreenInfo.playerHitTime += delta.elapsedMS;
+        this.playerHitScreenInfo.playerHitBlinkTime += delta.elapsedMS;
+    }
+
     #handleGameSessionLivesLeftUpdate(delta) {
-        // TODO
+        if (!this.levelChangeScreenInfo) {
+            this.levelChangeScreenInfo = {};
+            this.levelChangeScreenInfo.levelChangeTime = 0;
+
+            const background = new PIXI.Graphics();
+            background.rect(0, 0, this.app.screen.width, this.app.screen.height);
+            background.fill(HEX_COLOR_CODES.BLACK);
+            this.screenContent.levelChangeElems.push(background);
+            this.app.stage.addChild(background);
+
+            const { width: window_width, height: window_height } = this.app.screen;
+            const newLevelString = `Level: ${this.level}\nLives left: ${this.stats.lives}`;
+            const newLevelText = this.#getSizedText(newLevelString, window_width, window_height, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
+            newLevelText.x = (window_width - newLevelText.width) / 2;
+            newLevelText.y = (window_height - newLevelText.height) / 2;
+            this.screenContent.levelChangeElems.push(newLevelText);
+            this.app.stage.addChild(newLevelText);
+
+            this.soundManager.playNewLevel();
+        }
+
+        if (this.levelChangeScreenInfo.levelChangeTime >= DURATION_MS_LEVEL_CHANGE) {
+            throw new Error('Not implemented yet.');
+        }
     }
 
     /**
@@ -673,12 +774,7 @@ export class GameSessionManager {
             this.playerMoving = false;
         }
         if (!this.screenContent.pauseSign) {
-            const { width: window_width, height: window_height } = this.app.screen;
-            const pauseSign = this.#getSizedText('PAUSED', window_width, window_height, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
-            pauseSign.x = (window_width - pauseSign.width) / 2;
-            pauseSign.y = (window_height - pauseSign.height) / 2;
-            this.screenContent.pauseSign = pauseSign;
-            this.app.stage.addChild(pauseSign);
+            this.#drawPauseSign();
         }
         if (endPause) {
             this.app.stage.removeChild(this.screenContent.pauseSign);
@@ -714,6 +810,9 @@ export class GameSessionManager {
             case this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS:
                 this.#handleGameSessionInProgressUpdate(delta);
                 break;
+            case this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT:
+                this.#handleGameSessionPlayerHitUpdate(delta);
+                break;
             case this.gameSessionState.GAME_SESSION_STATE_LIVES_LEFT:
                 this.#handleGameSessionLivesLeftUpdate(delta);
                 break;
@@ -745,38 +844,38 @@ class Arena {
      * Creates a new arena with walls and empty spaces.
      * @param {PIXI.Application} app - The PIXI application.
      * @param {Object} textures - The textures object.
-     * @param {Number} rows_count - The number of rows in the arena.
-     * @param {Number} cols_count - The number of columns in the arena.
+     * @param {Number} rowsCount - The number of rows in the arena.
+     * @param {Number} colsCount - The number of columns in the arena.
      */
-    constructor(app, textures, rows_count, cols_count) {
+    constructor(app, textures, rowsCount, colsCount) {
         this.app = app;
         this.textures = textures;
-        this.rows_count = rows_count;
-        this.cols_count = cols_count;
-        this.grid = this.#createGrid(rows_count, cols_count);
-        this.wall_width = null;
-        this.wall_height = null;
+        this.rowsCount = rowsCount;
+        this.colsCount = colsCount;
+        this.grid = this.#createGrid(rowsCount, colsCount);
+        this.wallWidth = null;
+        this.wallHeight = null;
         this.wallsElements = [];
         this.freeSpaceElements = [];
     }
 
     /**
      * Creates a grid with walls and empty spaces.
-     * @param {Number} rows_count - The number of rows in the grid.
-     * @param {Number} cols_count - The number of columns in the grid.
+     * @param {Number} rowsCount - The number of rows in the grid.
+     * @param {Number} colsCount - The number of columns in the grid.
      * @returns {Array} The grid.
     */
-    #createGrid(rows_count, cols_count) {
+    #createGrid(rowsCount, colsCount) {
         const grid = [];
-        for (let row_index = 0; row_index < rows_count; row_index++) {
+        for (let rowIndex = 0; rowIndex < rowsCount; rowIndex++) {
             const row = [];
-            for (let col_index = 0; col_index < cols_count; col_index++) {
-                if (row_index === 0 || row_index === (rows_count - 1) || col_index === 0 || col_index === (cols_count - 1)) {
-                    row.push(GRID_CELL_TYPE.WALL); // outer walls
-                } else if ((row_index % 2) === 0 && (col_index % 2) === 0) {
-                    row.push(GRID_CELL_TYPE.WALL); // inner walls
+            for (let colIndex = 0; colIndex < colsCount; colIndex++) {
+                if (rowIndex === 0 || rowIndex === (rowsCount - 1) || colIndex === 0 || colIndex === (colsCount - 1)) {
+                    row.push({type: GRID_CELL_TYPE.WALL, elem: null}); // outer walls
+                } else if ((rowIndex % 2) === 0 && (colIndex % 2) === 0) {
+                    row.push({type: GRID_CELL_TYPE.WALL, elem: null}); // inner walls
                 } else {
-                    row.push(GRID_CELL_TYPE.EMPTY); // empty space
+                    row.push({type: GRID_CELL_TYPE.EMPTY, elem: null}); // empty space
                 }
             }
             grid.push(row);
@@ -793,10 +892,10 @@ class Arena {
      * @returns {Object} The canvas coordinates.
      */
     gridToCanvas(gridX, gridY, screenWidth, screenHeight) {
-        let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.cols_count;
-        let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rows_count;
+        let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
+        let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
         let canvasX = gridX * cellWidth;
-        let y_offset = (screenHeight - (cellHeight * this.rows_count));
+        let y_offset = (screenHeight - (cellHeight * this.rowsCount));
         let canvasY = y_offset + (gridY * cellHeight);
         return { x: canvasX, y: canvasY, cellWidth: cellWidth, cellHeight: cellHeight };
     }
@@ -810,10 +909,10 @@ class Arena {
      * @returns {Object} The grid coordinates.
      */
     canvasToGrid(canvasX, canvasY, screenWidth, screenHeight) {
-        let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.cols_count;
-        let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rows_count;
+        let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
+        let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
         let gridX = Math.round(canvasX / cellWidth);
-        let y_offset = (screenHeight - (cellHeight * this.rows_count));
+        let y_offset = (screenHeight - (cellHeight * this.rowsCount));
         let gridY = Math.round((canvasY - y_offset) / cellHeight);
         return { x: gridX, y: gridY };
     }
@@ -827,10 +926,19 @@ class Arena {
       */
     checkWallCollision(elem, deltaX = 0, deltaY = 0) {
         const elemBounds = elem.getBounds();
-        for (const wall of this.wallsElements) {
-            const wallBounds = wall.getBounds();
-            if (checkCollision(elemBounds.x, elemBounds.y, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, deltaX, deltaY)) {
-                return true;
+        // const wallElems = this.grid.flat().filter(cell => cell.type === GRID_CELL_TYPE.WALL).map(cell => cell.elem);
+        // for (const wall of wallElems) {
+        for (let row_index = 0; row_index < this.rowsCount; row_index++) {
+            for (let col_index = 0; col_index < this.colsCount; col_index++) {
+                if (this.grid[row_index][col_index].type !== GRID_CELL_TYPE.WALL) {
+                    continue;
+                }
+                const wall = this.grid[row_index][col_index].elem;
+
+                const wallBounds = wall.getBounds();
+                if (checkCollision(elemBounds.x, elemBounds.y, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, deltaX, deltaY)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -841,61 +949,65 @@ class Arena {
      * @returns {Object} The random empty space coordinates.
      */
     randomEmptySpace() {
-        let row_index = Math.floor(Math.random() * this.rows_count);
-        let col_index = Math.floor(Math.random() * this.cols_count);
-        while (this.grid[row_index][col_index] === GRID_CELL_TYPE.WALL) {
-            row_index = Math.floor(Math.random() * this.rows_count);
-            col_index = Math.floor(Math.random() * this.cols_count);
+        let rowIndex = Math.floor(Math.random() * this.rowsCount);
+        let colIndex = Math.floor(Math.random() * this.colsCount);
+        while (this.grid[rowIndex][colIndex].type === GRID_CELL_TYPE.WALL) {
+            rowIndex = Math.floor(Math.random() * this.rowsCount);
+            colIndex = Math.floor(Math.random() * this.colsCount);
         }
         
-        const x_coord = this.gridToCanvas(col_index, row_index, this.app.screen.width, this.app.screen.height).x;
-        const y_coord = this.gridToCanvas(col_index, row_index, this.app.screen.width, this.app.screen.height).y;
+        const x_coord = this.gridToCanvas(colIndex, rowIndex, this.app.screen.width, this.app.screen.height).x;
+        const y_coord = this.gridToCanvas(colIndex, rowIndex, this.app.screen.width, this.app.screen.height).y;
         return { x: x_coord, y: y_coord };
     }
 
     /**
      * Draws the arena on the screen.
-     * // TODO add support for textures
      */
     draw() {
-        if (this.wallsElements) {
-            for (let wall of this.wallsElements) {
-                this.app.stage.removeChild(wall);
-            }
-            this.wallsElements = [];
-        }
-        if (this.freeSpaceElements) {
-            for (let freeSpace of this.freeSpaceElements) {
-                this.app.stage.removeChild(freeSpace);
-            }
-            this.freeSpaceElements = [];
-        }
-
-        this.wall_width = this.app.screen.width * SCALE_WIDTH_ARENA_TO_SCREEN / this.cols_count;
-        this.wall_height = this.app.screen.height * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rows_count;
+        this.wallWidth = this.app.screen.width * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
+        this.wallHeight = this.app.screen.height * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
 
         const { width, height } = this.app.screen;
-        for (let row_index = 0; row_index < this.rows_count; row_index++) {
-            for (let col_index = 0; col_index < this.cols_count; col_index++) {
-                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(col_index, row_index, width, height);
-                // const elem = new PIXI.Graphics();
-                // elem.rect(x, y, cellWidth, cellHeight);
-                if (this.grid[row_index][col_index] === GRID_CELL_TYPE.WALL) {
+        for (let rowIndex = 0; rowIndex < this.rowsCount; rowIndex++) {
+            for (let colIndex = 0; colIndex < this.colsCount; colIndex++) {
+                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(colIndex, rowIndex, width, height);
+                if (this.grid[rowIndex][colIndex].type === GRID_CELL_TYPE.WALL) {
                     let elem = new PIXI.Sprite(this.textures.wall);
                     elem.width = cellWidth;
                     elem.height = cellHeight;
                     elem.x = x;
                     elem.y = y;
-                    // elem.fill(HEX_COLOR_CODES.GRAY);
-                    this.wallsElements.push(elem);
+                    this.grid[rowIndex][colIndex].elem = elem;
                     app.stage.addChild(elem);
                 } else {
                     let elem = new PIXI.Graphics();
                     elem.rect(x, y, cellWidth, cellHeight);
                     elem.fill(HEX_COLOR_CODES.BLACK);
-                    this.freeSpaceElements.push(elem);
+                    this.grid[rowIndex][colIndex].elem = elem;
                     app.stage.addChild(elem);
                 }
+            }
+        }
+    }
+
+    /**
+     * Redraws the arena on the screen.
+     * Used when the screen is resized.
+     */
+    redraw() {
+        this.wallWidth = this.app.screen.width * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
+        this.wallHeight = this.app.screen.height * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
+
+        const { width, height } = this.app.screen;
+        for (let row_index = 0; row_index < this.rowsCount; row_index++) {
+            for (let col_index = 0; col_index < this.colsCount; col_index++) {
+                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(col_index, row_index, width, height);
+                const elem = this.grid[row_index][col_index].elem;
+                elem.width = cellWidth;
+                elem.height = cellHeight;
+                elem.x = x;
+                elem.y = y;
             }
         }
     }
