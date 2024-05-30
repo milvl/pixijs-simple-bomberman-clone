@@ -1,8 +1,8 @@
 import { HEX_COLOR_CODES } from "./color_codes.js";
 
-const module_name_prefix = "drawing_manager.js - ";
+const MODULE_NAME_PREFIX = 'drawing_manager_menus.js - ';
 
-const TEXT_RECT_RADIUS = 15;
+const TEXT_RECT_RADIUS_SCALE_TO_RECT_WIDTH = 1/15;
 const TEXT_RECT_FONT_SIZE_SCALE = 1/2;
 const TITLE_FONT_FAMILY = "Emulogic zrEw";
 const TEXT_FONT_FAMILY = "Pressstart2p Vav7";
@@ -121,7 +121,7 @@ export class MainMenuDrawingManager {
                                  y, 
                                  logoRectWidth,
                                  logoRectHeight,
-                                 this.TEXT_RECT_RADIUS);
+                                 TEXT_RECT_RADIUS_SCALE_TO_RECT_WIDTH * logoRectWidth);
         logoRect.fill(HEX_COLOR_CODES.WHITE);
         this.app.stage.addChild(logoRect);
 
@@ -144,22 +144,22 @@ export class MainMenuDrawingManager {
      */
     #drawButtons() {
         let x = (this.app.screen.width - this.app.screen.width * this.BUTTON_WIDTH_SCALE) / 2;
-        let button_width = this.app.screen.width * this.BUTTON_WIDTH_SCALE;
-        let button_height = this.app.screen.height * this.BUTTON_HEIGHT_SCALE;
+        let buttonWidth = this.app.screen.width * this.BUTTON_WIDTH_SCALE;
+        let buttonHeight = this.app.screen.height * this.BUTTON_HEIGHT_SCALE;
         const fontSize = getFontSize(getStringWithSafeMargin(this.screenContent.options.reduce((a, b) => a.length > b.length ? a : b)), 
-                                     button_width, 
-                                     button_height, 
+                                     buttonWidth, 
+                                     buttonHeight, 
                                      TEXT_FONT_FAMILY);
 
         for (let i = 0; i < this.screenContent.options.length; i++) {
-            let offset_from_logo = this.app.screen.height * this.LOGO_Y_OFFSET_SCALE * 2 + (this.app.screen.height * this.LOGO_HEIGHT_SCALE);
-            let y = offset_from_logo + (this.app.screen.height * this.BUTTON_HEIGHT_SCALE * i * 2);
+            let offsetFromLogo = this.app.screen.height * this.LOGO_Y_OFFSET_SCALE * 2 + (this.app.screen.height * this.LOGO_HEIGHT_SCALE);
+            let y = offsetFromLogo + (this.app.screen.height * this.BUTTON_HEIGHT_SCALE * i * 2);
             let button = new PIXI.Graphics();
             button.roundRect(x, 
                                    y, 
-                                   button_width, 
-                                   button_height, 
-                                   this.TEXT_RECT_RADIUS);
+                                   buttonWidth, 
+                                   buttonHeight, 
+                                   TEXT_RECT_RADIUS_SCALE_TO_RECT_WIDTH * buttonWidth);
             button.fill(HEX_COLOR_CODES.WHITE);
             this.app.stage.addChild(button);
             
@@ -171,34 +171,34 @@ export class MainMenuDrawingManager {
                 fill: HEX_COLOR_CODES.BLACK,  // text color
                 align: 'center'}
             });
-            buttonText.x = x + (button_width / 2) - (buttonText.width / 2);  // center text horizontally
-            buttonText.y = y + (button_height / 2) - (buttonText.height / 2);  // center text vertically
+            buttonText.x = x + (buttonWidth / 2) - (buttonText.width / 2);  // center text horizontally
+            buttonText.y = y + (buttonHeight / 2) - (buttonText.height / 2);  // center text vertically
 
             this.app.stage.addChild(buttonText);
 
             // add >> << around button if selected
             if (i === this.screenContent.selected) {
-                let left_arrow = new PIXI.Graphics();
-                let polygon_points = [x - button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X,
-                                      y + button_height * this.SELECTE_MARKER_LOCATION_TO_BUTTON_SCALE_Y,       // middle of button
-                                      x - (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
+                let leftArrow = new PIXI.Graphics();
+                let polygonPoints = [x - buttonWidth * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X,
+                                      y + buttonHeight * this.SELECTE_MARKER_LOCATION_TO_BUTTON_SCALE_Y,       // middle of button
+                                      x - (2 * buttonWidth * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
                                       y,                                                                        // top of button
-                                      x - (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
-                                      y + button_height];                                                       // bottom of button
-                left_arrow.drawPolygon(polygon_points);
-                left_arrow.fill(HEX_COLOR_CODES.WHITE);
-                this.app.stage.addChild(left_arrow);
+                                      x - (2 * buttonWidth * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
+                                      y + buttonHeight];                                                       // bottom of button
+                leftArrow.drawPolygon(polygonPoints);
+                leftArrow.fill(HEX_COLOR_CODES.WHITE);
+                this.app.stage.addChild(leftArrow);
 
-                let right_arrow = new PIXI.Graphics();
-                polygon_points = [x + button_width + button_width* this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X,
-                                  y + button_height * this.SELECTE_MARKER_LOCATION_TO_BUTTON_SCALE_Y,       // middle of button
-                                  x + button_width + (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
+                let rightArrow = new PIXI.Graphics();
+                polygonPoints = [x + buttonWidth + buttonWidth* this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X,
+                                  y + buttonHeight * this.SELECTE_MARKER_LOCATION_TO_BUTTON_SCALE_Y,       // middle of button
+                                  x + buttonWidth + (2 * buttonWidth * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
                                   y,                                                                        // top of button
-                                  x + button_width + (2 * button_width * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
-                                  y + button_height];                                                       // bottom of button
-                right_arrow.drawPolygon(polygon_points);
-                right_arrow.fill(HEX_COLOR_CODES.WHITE);
-                this.app.stage.addChild(right_arrow);
+                                  x + buttonWidth + (2 * buttonWidth * this.SELECT_MARKER_MARGIN_TO_BUTTON_SCALE_X),
+                                  y + buttonHeight];                                                       // bottom of button
+                rightArrow.drawPolygon(polygonPoints);
+                rightArrow.fill(HEX_COLOR_CODES.WHITE);
+                this.app.stage.addChild(rightArrow);
             }
         }
     }
@@ -281,7 +281,7 @@ export class SettingsDrawingManager {
                                   y, 
                                   titleRectWidth,
                                   titleRectHeight,
-                                  this.TEXT_RECT_RADIUS);
+                                  TEXT_RECT_RADIUS_SCALE_TO_RECT_WIDTH * titleRectWidth);
         titleRect.endFill();
         this.app.stage.addChild(titleRect);
 
@@ -331,7 +331,7 @@ export class SettingsDrawingManager {
         for (let i = 0; i < this.screenContent.options.length; i++) {
             // y = y_TitleWithMargins + (maxOptionTextHeight / 2) + (maxOptionTextHeight + optionTextGap) * i;
 
-            let optionString = this.#getFormattedOptionString(this.screenContent.options[i], this.screenContent.options_values[i]);
+            let optionString = this.#getFormattedOptionString(this.screenContent.options[i], this.screenContent.optionsValues[i]);
             optionString = getStringWithSafeMargin(optionString);
 
             let optionText = new PIXI.Text({text: optionString, style: {
@@ -351,19 +351,19 @@ export class SettingsDrawingManager {
             this.app.stage.addChild(optionText);
 
             if (i === this.screenContent.selected) {
-                let right_arrow = new PIXI.Graphics();
-                right_arrow.beginFill(HEX_COLOR_CODES.WHITE);
-                let x_title_end = x + (this.app.screen.width * this.TITLE_WIDTH_SCALE);
-                let polygon_points = [x_title_end,
+                let rightArrow = new PIXI.Graphics();
+                rightArrow.beginFill(HEX_COLOR_CODES.WHITE);
+                let x_titleEnd = x + (this.app.screen.width * this.TITLE_WIDTH_SCALE);
+                let polygonPoints = [x_titleEnd,
                                       y,                    // top right of text
-                                      x_title_end - maxOptionTextHeight,
+                                      x_titleEnd - maxOptionTextHeight,
                                       y + maxOptionTextHeight / 2,  // middle of text
-                                      x_title_end,
+                                      x_titleEnd,
                                       y + maxOptionTextHeight];     // bottom right of text
 
-                right_arrow.drawPolygon(polygon_points);
-                right_arrow.endFill();
-                this.app.stage.addChild(right_arrow);
+                rightArrow.drawPolygon(polygonPoints);
+                rightArrow.endFill();
+                this.app.stage.addChild(rightArrow);
             }
         }
     }

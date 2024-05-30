@@ -1,4 +1,4 @@
-const module_name_prefix = 'game_states.js - ';
+const MODULE_NAME_PREFIX = 'game_states.js - ';
 
 export const GAME_STATES = {
     NONE: -1,
@@ -56,10 +56,10 @@ export class GameState {
         switch (this._state) {
             case GAME_STATES.NONE:
                 this._state = GAME_STATES.MAIN_MENU;
-                console.log(module_name_prefix + "Game state set to MAIN_MENU");
+                console.log(MODULE_NAME_PREFIX + "Game state set to MAIN_MENU");
                 break;
             default:
-                console.error(module_name_prefix + "Invalid game state for setup: " + this._state);
+                console.error(MODULE_NAME_PREFIX + "Invalid game state for setup: " + this._state);
                 throw new Error("Invalid game state for setup: " + this._state);
         }
     }
@@ -68,32 +68,32 @@ export class GameState {
      * Prints the current game state to the console.
      */
     printGameState() {
-        let current_state = undefined;
+        let currentState = null;
         switch (this._state) {
             case GAME_STATES.NONE:
-                current_state = GAME_STATES_MAP.NONE;
+                currentState = GAME_STATES_MAP.NONE;
                 break;
             case GAME_STATES.MAIN_MENU:
-                current_state = GAME_STATES_MAP.MAIN_MENU;
+                currentState = GAME_STATES_MAP.MAIN_MENU;
                 break;
             case GAME_STATES.GAME_SESSION:
-                current_state = GAME_STATES_MAP.GAME_SESSION;
+                currentState = GAME_STATES_MAP.GAME_SESSION;
                 break;
             case GAME_STATES.GAME_END:
-                current_state = GAME_STATES_MAP.GAME_END;
+                currentState = GAME_STATES_MAP.GAME_END;
                 break;
             case GAME_STATES.SETTINGS:
-                current_state = GAME_STATES_MAP.SETTINGS;
+                currentState = GAME_STATES_MAP.SETTINGS;
                 break;
             case GAME_STATES.LEADERBOARDS:
-                current_state = GAME_STATES_MAP.LEADERBOARDS;
+                currentState = GAME_STATES_MAP.LEADERBOARDS;
                 break;
             default:
-                current_state = "Invalid game state: " + this._state;
+                currentState = "Invalid game state: " + this._state;
                 break;
         }
 
-        console.log(module_name_prefix + "Current game state: " + JSON.stringify(current_state));
+        console.log(MODULE_NAME_PREFIX + "Current game state: " + JSON.stringify(currentState));
     }
 
     /**
@@ -115,7 +115,7 @@ export class GameState {
             
             case GAME_STATES.MAIN_MENU:
                 this._state = GAME_STATES.MAIN_MENU;
-                console.log(module_name_prefix + "Game state set to MAIN_MENU");
+                console.log(MODULE_NAME_PREFIX + "Game state set to MAIN_MENU");
                 break;
             
             case GAME_STATES.GAME_SESSION:
@@ -123,7 +123,7 @@ export class GameState {
                     throw new Error("Logic Error: Cannot set game state to GAME_SESSION from " + this._state);
                 }
                 this._state = GAME_STATES.GAME_SESSION;
-                console.log(module_name_prefix + "Game state set to GAME_SESSION");
+                console.log(MODULE_NAME_PREFIX + "Game state set to GAME_SESSION");
                 break;
             
             case GAME_STATES.GAME_END:
@@ -131,7 +131,7 @@ export class GameState {
                     throw new Error("Logic Error: Cannot set game state to GAME_END from " + this._state);
                 }
                 this._state = GAME_STATES.GAME_END;
-                console.log(module_name_prefix + "Game state set to GAME_END");
+                console.log(MODULE_NAME_PREFIX + "Game state set to GAME_END");
                 break;
             
             case GAME_STATES.SETTINGS:
@@ -139,7 +139,7 @@ export class GameState {
                     throw new Error("Logic Error: Cannot set game state to SETTINGS from " + this._state);
                 }
                 this._state = GAME_STATES.SETTINGS;
-                console.log(module_name_prefix + "Game state set to SETTINGS");
+                console.log(MODULE_NAME_PREFIX + "Game state set to SETTINGS");
                 break;
             
             case GAME_STATES.LEADERBOARDS:
@@ -147,7 +147,7 @@ export class GameState {
                     throw new Error("Logic Error: Cannot set game state to LEADERBOARDS from " + this._state);
                 }
                 this._state = GAME_STATES.LEADERBOARDS;
-                console.log(module_name_prefix + "Game state set to LEADERBOARDS");
+                console.log(MODULE_NAME_PREFIX + "Game state set to LEADERBOARDS");
                 break;
             
             // should never happen

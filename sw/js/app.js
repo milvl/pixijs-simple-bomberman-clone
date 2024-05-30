@@ -1,10 +1,9 @@
 // import * as PIXI from 'pixi.js';
 import loadAssetsManifest from './loader.js';
-import { GameState } from './game_states.js';
 import { Game } from './game.js';
 import { SoundManager } from './sound_manager.js';
 
-let module_name_prefix = 'app.js - ';
+let MODULE_NAME_PREFIX = 'app.js - ';
 
 const RATIO_WIDTH = 21;
 const RATIO_HEIGHT = 11 * 1.2;      // 21:11 aspect ratio with hud taking up 20% of the height // TODO better way to calculate this
@@ -78,7 +77,7 @@ async function prepareAssets() {
         const assets = await loadAssetsManifest(MANIFEST);
         return assets;
     } catch (error) {
-        console.error(module_name_prefix, 'Error initializing game assets:', error);
+        console.error(MODULE_NAME_PREFIX, 'Error initializing game assets:', error);
         throw error;  // Re-throw the error to ensure it's propagated
     }
 }
@@ -98,9 +97,9 @@ function getProperDimensions() {
 
     // if the limiting dimension is the height
     if (viewportAspectRatio >= gameAspectRatio) {
-        const scale_factor = window.innerHeight / RATIO_HEIGHT;
+        const scaleFactor = window.innerHeight / RATIO_HEIGHT;
         height = window.innerHeight;
-        width = RATIO_WIDTH * scale_factor;
+        width = RATIO_WIDTH * scaleFactor;
 
         if (height >= window.screen.height * GAME_WINDOW_SCALE) {
             width *= GAME_WINDOW_SCALE;
@@ -145,15 +144,15 @@ function resizeCanvas(app, windowChange) {
  * @async
  */
 async function prepareGameAssets(textures, soundManager) {
-    console.log(module_name_prefix, 'Preparing game assets...');
+    console.log(MODULE_NAME_PREFIX, 'Preparing game assets...');
     const assets = await prepareAssets();
-    console.log(module_name_prefix, 'Assets:', assets);
+    console.log(MODULE_NAME_PREFIX, 'Assets:', assets);
     loadTextures(assets, textures);
     soundManager.assignSounds(assets);
 
-    console.log(module_name_prefix, 'Game assets prepared.');
-    console.log(module_name_prefix, 'Textures:', TEXTURES);
-    console.log(module_name_prefix, 'Audio:', AUDIO);
+    console.log(MODULE_NAME_PREFIX, 'Game assets prepared.');
+    console.log(MODULE_NAME_PREFIX, 'Textures:', TEXTURES);
+    console.log(MODULE_NAME_PREFIX, 'Audio:', AUDIO);
 }
 
 /**
@@ -162,11 +161,11 @@ async function prepareGameAssets(textures, soundManager) {
  * @param {Object} textures - The texture object to load the textures into.
  */
 function loadTextures(assets, textures) {
-    console.log(module_name_prefix, 'Loading textures:', assets);
+    console.log(MODULE_NAME_PREFIX, 'Loading textures:', assets);
     for (let texture in assets.textures) {
         textures[texture] = PIXI.Texture.from(texture);
     }
-    console.log(module_name_prefix, 'Loaded textures:', textures);
+    console.log(MODULE_NAME_PREFIX, 'Loaded textures:', textures);
 }
 
 /**
@@ -230,7 +229,7 @@ async function setup() {
     try {
         await prepareGameAssets(TEXTURES, SOUND_MANAGER);
     } catch (error) {
-        console.error(module_name_prefix, 'Failed to load textures:', error);;
+        console.error(MODULE_NAME_PREFIX, 'Failed to load textures:', error);;
     }
 
     // setup keyboard input
@@ -249,14 +248,14 @@ export function debugPrintGameState() {
 }
 
 export function debugPrintGame() {
-    console.log(module_name_prefix, 'Game:', game);
+    console.log(MODULE_NAME_PREFIX, 'Game:', game);
 }
 
 export function debugPrintScreen() {
-    console.log(module_name_prefix, 'Screen:', app.screen);
-    console.log(module_name_prefix, 'Canvas:', app.canvas);
-    console.log(module_name_prefix, 'Renderer:', app.renderer);
-    console.log(module_name_prefix, 'Stage:', app.stage);
+    console.log(MODULE_NAME_PREFIX, 'Screen:', app.screen);
+    console.log(MODULE_NAME_PREFIX, 'Canvas:', app.canvas);
+    console.log(MODULE_NAME_PREFIX, 'Renderer:', app.renderer);
+    console.log(MODULE_NAME_PREFIX, 'Stage:', app.stage);
 }
 
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
@@ -279,7 +278,7 @@ window.addEventListener('resize', () => resizeCanvas(app, windowChange));
 await setup();
 
 export const game = new Game(window, app, TEXTURES, SOUND_MANAGER, KEY_INPUTS, windowChange);      // TODO remove export (debugging)
-console.log(module_name_prefix, 'Game:', game);
+console.log(MODULE_NAME_PREFIX, 'Game:', game);
 
 // PIXI's ticker for the game loop
 app.ticker.add((delta) => game.update(delta));

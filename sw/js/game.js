@@ -2,7 +2,7 @@ import { GameState, GAME_STATES } from "./game_states.js";
 import { MainMenuDrawingManager, SettingsDrawingManager } from "./drawing_manager_menus.js";
 import { GameSessionManager } from "./game_session.js";
 
-const module_name_prefix = 'game.js - ';
+const MODULE_NAME_PREFIX = 'game.js - ';
 
 const ARENA_ROWS = 11;
 const ARENA_COLS = 21;
@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS_CONTENT = {
         'Endless Mode: ',
         'Back',
     ],
-    options_values: [
+    optionsValues: [
         DEFAULT_SETTINGS.lives,
         DEFAULT_SETTINGS.volume,
         DEFAULT_SETTINGS.endless,
@@ -64,16 +64,16 @@ export class Game {
      * @param {PIXI.Application} app - The PIXI application.
      * @param {Object} textures - The textures object.
      * @param {SoundManager} soundManager - The sound manager object.
-     * @param {Object} key_inputs - The key inputs object.
+     * @param {Object} keyInputs - The key inputs object.
      * @param {Object} windowChange - The window change object.
      * @returns {Game} The new Game object.
      */
-    constructor(window, app, textures, soundManager, key_inputs, windowChange) {
+    constructor(window, app, textures, soundManager, keyInputs, windowChange) {
         this.window = window;
         this.app = app;
         this.textures = textures;
         this.soundManager = soundManager;
-        this.key_inputs = key_inputs;
+        this.keyInputs = keyInputs;
         this.windowChange = windowChange;
 
         this.settings = { ...DEFAULT_SETTINGS};
@@ -89,30 +89,30 @@ export class Game {
      * @param {Function} enterCallback - The callback function to call when the enter key is pressed.
      */
     #setupOptionsKeys(enterCallback) {
-        this.key_inputs.up.press = () => {
-            if (!this.key_inputs.down.isDown) {
+        this.keyInputs.up.press = () => {
+            if (!this.keyInputs.down.isDown) {
                 this.screenContent.selected = mod(this.screenContent.selected - 1, this.screenContent.options.length);
                 this.soundManager.playCursor();
                 this.screenContent.updated = true;
             }
         }
-        this.key_inputs.down.press = () => {
-            if (!this.key_inputs.up.isDown) {
+        this.keyInputs.down.press = () => {
+            if (!this.keyInputs.up.isDown) {
                 this.screenContent.selected = mod(this.screenContent.selected + 1, this.screenContent.options.length);
                 this.soundManager.playCursor();
                 this.screenContent.updated = true;
             }
         }
-        this.key_inputs.enter.press = enterCallback;
+        this.keyInputs.enter.press = enterCallback;
     }
 
     /**
      * Unbinds the arrow keys from functions.
      */
     #unsetOptionsKeys() {
-        this.key_inputs.up.press = undefined;
-        this.key_inputs.down.press = undefined;
-        this.key_inputs.enter.press = undefined;
+        this.keyInputs.up.press = undefined;
+        this.keyInputs.down.press = undefined;
+        this.keyInputs.enter.press = undefined;
     }
 
     /**
@@ -144,7 +144,7 @@ export class Game {
                         this.screenContent.submited = this.screenContent.selected;
                         break;
                     default:
-                        console.error(module_name_prefix, 'Invalid option selected.');
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
                         break;
                 }
                 this.soundManager.playCursorSubmit();
@@ -169,7 +169,7 @@ export class Game {
         if (this.screenContent.updated) {
             // if selected option was submited, switch to the corresponding state
             if (this.screenContent.submited != null) {
-                console.log(module_name_prefix, 'Switching to:', this.screenContent.options[this.screenContent.submited]);
+                console.log(MODULE_NAME_PREFIX, 'Switching to:', this.screenContent.options[this.screenContent.submited]);
                 switch (this.screenContent.submited) {
                     case 0:
                         switchTo = GAME_STATES.GAME_SESSION;
@@ -181,7 +181,7 @@ export class Game {
                         switchTo = GAME_STATES.LEADERBOARDS;
                         break;
                     default:
-                        console.error(module_name_prefix, 'Invalid option submited.');
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option submited.');
                         break;
                 }
                 if (switchTo != null) {
@@ -195,7 +195,7 @@ export class Game {
             // otherwise, draw the main menu updated content
             else {
                 this.drawingManager.redraw();
-                console.log(module_name_prefix, 'Selected:', this.screenContent.options[this.screenContent.selected]);
+                console.log(MODULE_NAME_PREFIX, 'Selected:', this.screenContent.options[this.screenContent.selected]);
                 this.screenContent.updated = false;
             }
         }
@@ -203,7 +203,7 @@ export class Game {
 
     #initGameSession(delta) {
         this.screenContent = {};
-        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.soundManager, this.key_inputs, ARENA_ROWS, ARENA_COLS);  //TODO textures, audio, key_inputs
+        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.soundManager, this.keyInputs, ARENA_ROWS, ARENA_COLS);
         this.drawingManager.start(delta);
     }
 
@@ -221,9 +221,9 @@ export class Game {
      */
     #getSettingsContent() {
         let content = { ...DEFAULT_SETTINGS_CONTENT };
-        content.options_values[0] = this.settings.lives;
-        content.options_values[1] = this.settings.volume;
-        content.options_values[2] = this.settings.endless;
+        content.optionsValues[0] = this.settings.lives;
+        content.optionsValues[1] = this.settings.volume;
+        content.optionsValues[2] = this.settings.endless;
         return content;
     }
 
@@ -238,23 +238,23 @@ export class Game {
             if (this.screenContent.selected != null) {
                 switch (this.screenContent.selected) {
                     case 0:
-                        this.screenContent.options_values[this.screenContent.selected] = mod(this.screenContent.options_values[this.screenContent.selected] + 1, DEFAULT_SETTINGS.lives + 1);
-                        this.settings.lives = this.screenContent.options_values[this.screenContent.selected];
+                        this.screenContent.optionsValues[this.screenContent.selected] = mod(this.screenContent.optionsValues[this.screenContent.selected] + 1, DEFAULT_SETTINGS.lives + 1);
+                        this.settings.lives = this.screenContent.optionsValues[this.screenContent.selected];
                         break;
                     case 1:
-                        this.screenContent.options_values[this.screenContent.selected] = !this.screenContent.options_values[this.screenContent.selected];
-                        this.settings.volume = this.screenContent.options_values[this.screenContent.selected];
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.volume = this.screenContent.optionsValues[this.screenContent.selected];
                         this.soundManager.soundEnabled = this.settings.volume;
                         break;
                     case 2:
-                        this.screenContent.options_values[this.screenContent.selected] = !this.screenContent.options_values[this.screenContent.selected];
-                        this.settings.endless = this.screenContent.options_values[this.screenContent.selected];
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.endless = this.screenContent.optionsValues[this.screenContent.selected];
                         break;
                     case 3:
                         this.screenContent.submited = this.screenContent.selected;
                         break;
                     default:
-                        console.error(module_name_prefix, 'Invalid option selected.');
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
                         break;
                 }
                 this.soundManager.playCursorSubmit();
@@ -278,13 +278,13 @@ export class Game {
         if (this.screenContent.updated) {
             // if selected option was submited, switch to the corresponding state
             if (this.screenContent.submited != null) {
-                console.log(module_name_prefix, 'Switching to:', this.screenContent.options[this.screenContent.submited]);
+                console.log(MODULE_NAME_PREFIX, 'Switching to:', this.screenContent.options[this.screenContent.submited]);
                 switch (this.screenContent.submited) {
                     case 3:
                         switchToMainMenu = true;
                         break;
                     default:
-                        console.error(module_name_prefix, 'Invalid option submited.');
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option submited.');
                         break;
                 }
                 if (switchToMainMenu) {
@@ -297,7 +297,7 @@ export class Game {
             // otherwise, draw the settings updated content
             else {
                 this.drawingManager.redraw();
-                console.log(module_name_prefix, 'Selected:', this.screenContent.options[this.screenContent.selected]);
+                console.log(MODULE_NAME_PREFIX, 'Selected:', this.screenContent.options[this.screenContent.selected]);
                 this.screenContent.updated = false;
             }
         }
@@ -320,17 +320,17 @@ export class Game {
                 this.#handleGameSessionUpdate(delta);
                 break;
             case GAME_STATES.GAME_OVER:
-                console.error(module_name_prefix, 'Game over to be implemented.');
+                console.error(MODULE_NAME_PREFIX, 'Game over to be implemented.');
                 throw new Error('Game over to be implemented.');
                 break;
             case GAME_STATES.SETTINGS:
                 this.#handleSettingsUpdate();
                 break;
             case GAME_STATES.LEADERBOARDS:
-                console.error(module_name_prefix, 'Leaderboards to be implemented.');
+                console.error(MODULE_NAME_PREFIX, 'Leaderboards to be implemented.');
                 throw new Error('Leaderboards to be implemented.');
             default:
-                console.error(module_name_prefix, 'Invalid game state.');
+                console.error(MODULE_NAME_PREFIX, 'Invalid game state.');
                 break;
         }
     }
