@@ -17,12 +17,16 @@ export class Arena {
      * @param {Object} textures - The textures object.
      * @param {Number} rowsCount - The number of rows in the arena.
      * @param {Number} colsCount - The number of columns in the arena.
+     * @param {Number} [scaleWidthArenaToScreen=1] - The scale factor for width.
+     * @param {Number} [scaleHeightArenaToScreen=1] - The scale factor for height.
      */
-    constructor(app, textures, rowsCount, colsCount) {
+    constructor(app, textures, rowsCount, colsCount, scaleWidthArenaToScreen = 1, scaleHeightArenaToScreen = 1) {
         this.app = app;
         this.textures = textures;
         this.rowsCount = rowsCount;
         this.colsCount = colsCount;
+        this.scaleWidthArenaToScreen = scaleWidthArenaToScreen;
+        this.scaleHeightArenaToScreen = scaleHeightArenaToScreen;
         this.grid = this.#createGrid(rowsCount, colsCount);
         this.wallWidth = null;
         this.wallHeight = null;
@@ -58,14 +62,12 @@ export class Arena {
      * Converts grid coordinates to canvas coordinates.
      * @param {Number} gridX - The x-coordinate on the grid.
      * @param {Number} gridY - The y-coordinate on the grid.
-     * @param {Number} [scaleWidthArenaToScreen=1] - The scale factor for width.
-     * @param {Number} [scaleHeightArenaToScreen=1] - The scale factor for height.
      * @returns {Object} The canvas coordinates.
      */
-    gridToCanvas(gridX, gridY, scaleWidthArenaToScreen = 1, scaleHeightArenaToScreen = 1) {
+    gridToCanvas(gridX, gridY) {
         const { width: screenWidth, height: screenHeight } = this.app.screen;
-        let cellWidth = screenWidth * scaleWidthArenaToScreen / this.colsCount;
-        let cellHeight = screenHeight * scaleHeightArenaToScreen / this.rowsCount;
+        let cellWidth = screenWidth * this.scaleWidthArenaToScreen / this.colsCount;
+        let cellHeight = screenHeight * this.scaleHeightArenaToScreen / this.rowsCount;
         let canvasX = gridX * cellWidth;
         let y_offset = (screenHeight - (cellHeight * this.rowsCount));
         let canvasY = y_offset + (gridY * cellHeight);
@@ -76,14 +78,12 @@ export class Arena {
      * Converts canvas coordinates to grid coordinates.
      * @param {Number} canvasX - The x-coordinate on the canvas.
      * @param {Number} canvasY - The y-coordinate on the canvas.
-     * @param {Number} [scaleWidthArenaToScreen=1] - The scale factor for width.
-     * @param {Number} [scaleHeightArenaToScreen=1] - The scale factor for height.
      * @returns {Object} The grid coordinates.
      */
-    canvasToGrid(canvasX, canvasY, scaleWidthArenaToScreen = 1, scaleHeightArenaToScreen = 1) {
+    canvasToGrid(canvasX, canvasY) {
         const { width: screenWidth, height: screenHeight } = this.app.screen;
-        let cellWidth = screenWidth * scaleWidthArenaToScreen / this.colsCount;
-        let cellHeight = screenHeight * scaleHeightArenaToScreen / this.rowsCount;
+        let cellWidth = screenWidth * this.scaleWidthArenaToScreen / this.colsCount;
+        let cellHeight = screenHeight * this.scaleHeightArenaToScreen / this.rowsCount;
         let gridX = Math.round(canvasX / cellWidth);
         let y_offset = (screenHeight - (cellHeight * this.rowsCount));
         let gridY = Math.round((canvasY - y_offset) / cellHeight);
@@ -126,12 +126,9 @@ export class Arena {
 
     /**
      * Returns random empty space coordinates.
-     * @param {Number} [scaleWidthArenaToScreen=1] - The scale factor for width.
-     * @param {Number} [scaleHeightArenaToScreen=1] - The scale factor for height.
      * @returns {Object} The random empty space coordinates.
      */
-    randomEmptySpace(scaleWidthArenaToScreen = 1, scaleHeightArenaToScreen = 1) {
-        const { width: screenWidth, height: screenHeight } = this.app.screen;
+    randomEmptySpace() {
         let rowIndex = Math.floor(Math.random() * this.rowsCount);
         let colIndex = Math.floor(Math.random() * this.colsCount);
         while (this.grid[rowIndex][colIndex].type === this.GRID_CELL_TYPE.WALL) {
@@ -139,25 +136,21 @@ export class Arena {
             colIndex = Math.floor(Math.random() * this.colsCount);
         }
         
-        const x_coord = this.gridToCanvas(colIndex, rowIndex, screenWidth, screenHeight, scaleWidthArenaToScreen, scaleHeightArenaToScreen).x;
-        const y_coord = this.gridToCanvas(colIndex, rowIndex, screenWidth, screenHeight, scaleWidthArenaToScreen, scaleHeightArenaToScreen).y;
-        return { x: x_coord, y: y_coord };
+        const { x: xCoord, y: yCoord } = this.gridToCanvas(colIndex, rowIndex)
+        return { x: xCoord, y: yCoord };
     }
 
     /**
      * Draws the arena on the screen.
-     * @param {Number} [scaleWidthArenaToScreen=1] - The scale factor for width.
-     * @param {Number} [scaleHeightArenaToScreen=1] - The scale factor for height.
      */
-    draw(scaleWidthArenaToScreen = 1, scaleHeightArenaToScreen = 1) {
+    draw() {
         const { width: screenWidth, height: screenHeight } = this.app.screen;
-        this.wallWidth = screenWidth * scaleWidthArenaToScreen / this.colsCount;
-        this.wallHeight = screenHeight * scaleHeightArenaToScreen / this.rowsCount;
-        console.log(this);
+        this.wallWidth = screenWidth * this.scaleWidthArenaToScreen / this.colsCount;
+        this.wallHeight = screenHeight * this.scaleHeightArenaToScreen / this.rowsCount;
 
         for (let rowIndex = 0; rowIndex < this.rowsCount; rowIndex++) {
             for (let colIndex = 0; colIndex < this.colsCount; colIndex++) {
-                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(colIndex, rowIndex, scaleWidthArenaToScreen, scaleHeightArenaToScreen);
+                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(colIndex, rowIndex);
                 if (this.grid[rowIndex][colIndex].type === this.GRID_CELL_TYPE.WALL) {
                     let elem = new PIXI.Sprite(this.textures.wall);
                     elem.width = cellWidth;
@@ -180,17 +173,15 @@ export class Arena {
     /**
      * Redraws the arena on the screen.
      * Used when the screen is resized.
-     * @param {Number} [scaleWidthArenaToScreen=1] - The scale factor for width.
-     * @param {Number} [scaleHeightArenaToScreen=1] - The scale factor for height.
      */
-    redraw(scaleWidthArenaToScreen = 1, scaleHeightArenaToScreen = 1) {
+    redraw() {
         const { width: screenWidth, height: screenHeight } = this.app.screen;
-        this.wallWidth = screenWidth * scaleWidthArenaToScreen / this.colsCount;
-        this.wallHeight = screenHeight * scaleHeightArenaToScreen / this.rowsCount;
+        this.wallWidth = screenWidth * this.scaleWidthArenaToScreen / this.colsCount;
+        this.wallHeight = screenHeight * this.scaleHeightArenaToScreen / this.rowsCount;
 
         for (let rowIndex = 0; rowIndex < this.rowsCount; rowIndex++) {
             for (let colIndex = 0; colIndex < this.colsCount; colIndex++) {
-                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(colIndex, rowIndex, scaleWidthArenaToScreen, scaleHeightArenaToScreen);
+                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(colIndex, rowIndex);
                 const elem = this.grid[rowIndex][colIndex].elem;
                 elem.width = cellWidth;
                 elem.height = cellHeight;

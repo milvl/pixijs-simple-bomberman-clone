@@ -2,6 +2,7 @@ import { HEX_COLOR_CODES } from "./constants/color_codes.js";
 import { GameSessionState } from "./game_session_states.js";
 import { LEVELS } from "./levels_config.js";
 import { Arena } from "./graphic_elements/arena.js";
+import { Enemy } from "./graphic_elements/enemy.js";
 // import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
@@ -143,7 +144,7 @@ export class GameSessionManager {
         this.screenContent = screenContent;
         this.screenContent.pauseSign = null;
         this.screenContent.hudElems = [];
-        this.screenContent.arena = new Arena(app, textures, rowsCount, colsCount);
+        this.screenContent.arena = new Arena(app, textures, rowsCount, colsCount, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         this.screenContent.player = null;
         this.screenContent.enemies = [];
         this.screenContent.breakableWalls = [];
@@ -473,7 +474,7 @@ export class GameSessionManager {
             // breakable walls
             for (let wall of levelConfig.breakableWalls) {
                 const { gridX, gridY } = wall;
-                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
+                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
                 let breakableWall = new PIXI.Sprite(this.textures.break_wall);
                 this.#spawnEntity(breakableWall, x, y);
                 this.screenContent.breakableWalls.push(breakableWall);
@@ -482,16 +483,16 @@ export class GameSessionManager {
             // enemies
             for (let enemy of levelConfig.enemies) {
                 const { gridX, gridY } = enemy;
-                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
+                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
                 let enemySprite = new PIXI.Sprite(this.textures.ghost01);
                 this.#spawnEntity(enemySprite, x, y, SCALE_ENEMY_TO_WALL);
-                const enemyObj = new Enemy(enemySprite, enemy.difficulty);
+                const enemyObj = new Enemy(this.app, this.screenContent.arena, enemySprite, enemy.difficulty);
                 this.screenContent.enemies.push(enemyObj);
             }
             
             // player
             const { gridX, gridY } = levelConfig.player;
-            const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
+            const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
             this.screenContent.player = new PIXI.Sprite(this.textures.player);
             this.#spawnEntity(this.screenContent.player, x, y, SCALE_PLAYER_TO_WALL);
         }
@@ -638,14 +639,14 @@ export class GameSessionManager {
         // create explosion sprites (now with graphics
         // center
         let explosion = new PIXI.Sprite(this.textures.explosion);
-        let { x: x_center, y: y_center } = this.screenContent.arena.gridToCanvas(centerX, centerY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
+        let { x: x_center, y: y_center } = this.screenContent.arena.gridToCanvas(centerX, centerY);
         this.#spawnEntity(explosion, x_center, y_center);
         explosionInstance.explosions.push(explosion);
         // all directions
         for (let dir of spread) {
             if (this.screenContent.arena.grid[dir.y][dir.x].type === this.screenContent.arena.GRID_CELL_TYPE.EMPTY) {
                 explosion = new PIXI.Sprite(this.textures.explosion);
-                let { x, y } = this.screenContent.arena.gridToCanvas(dir.x, dir.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
+                let { x, y } = this.screenContent.arena.gridToCanvas(dir.x, dir.y);
                 this.#spawnEntity(explosion, x, y, SCALE_EXPLOSION_TO_WALL);
                 explosionInstance.explosions.push(explosion);
             }
@@ -718,8 +719,8 @@ export class GameSessionManager {
             const {minX: playerX, minY: playerY} = this.screenContent.player.getBounds();
 
             // put the bomb in the cell the player is most in
-            const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(playerX, playerY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
-            const { x, y } = this.screenContent.arena.gridToCanvas(cellX, cellY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
+            const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(playerX, playerY);
+            const { x, y } = this.screenContent.arena.gridToCanvas(cellX, cellY);
 
             // create a bomb sprite
             let bomb = new PIXI.Sprite(this.textures.bomb);
@@ -814,9 +815,7 @@ export class GameSessionManager {
                 this.screenContent.exitDoor = new PIXI.Sprite(this.textures.door);
                 // put to center of the arena
                 const { x, y } = this.screenContent.arena.gridToCanvas(Math.floor(this.screenContent.arena.colsCount / 2), 
-                                                                       Math.floor(this.screenContent.arena.rowsCount / 2),
-                                                                       SCALE_WIDTH_ARENA_TO_SCREEN, 
-                                                                       SCALE_HEIGHT_ARENA_TO_SCREEN);
+                                                                       Math.floor(this.screenContent.arena.rowsCount / 2));
                 this.#spawnEntity(this.screenContent.exitDoor, x, y);
                 // keep player on top
                 this.app.stage.removeChild(this.screenContent.player);
@@ -1233,237 +1232,5 @@ export class GameSessionManager {
         this.app = null;
         this.started = false;
         this.ended = false;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-class Enemy {
-    DIFFICULTY_EASY = 0;
-    DIFFICULTY_MEDIUM = 1;
-    DIFFICULTY_HARD = 2;
-    #PROBABILITIES = {
-        [this.DIFFICULTY_EASY]: { bfs: 30, dfs: 30, targetPlayer: 40 },
-        [this.DIFFICULTY_MEDIUM]: { bfs: 50, dfs: 50, targetPlayer: 65 },
-        [this.DIFFICULTY_HARD]: { bfs: 70, dfs: 30, targetPlayer: 90 }
-    };
-    #NO_ANCESTOR = -1;
-
-    constructor(graphicElem, difficulty = this.DIFFICULTY_MEDIUM) {
-        this._elem = graphicElem;
-        this.difficulty = difficulty;
-        this._remainingPath = [];
-    }
-
-    #getGraphIndex(i, j, colsCount) {
-        return i * colsCount + j;
-    }
-
-    #getGridIndices(a, colsCount) {
-        return { i: Math.floor(a / colsCount), j: a % colsCount };
-    }
-
-    #createOccupiedGrid(screenWidth, screenHeight, arena, breakableWalls, bombs) {
-        // grid with walls, breakable walls and bombs (true if free, false if occupied)
-        const occupiedGrid = [];
-        for (let i = 0; i < arena.rowsCount; i++) {
-            let row = [];
-            for (let j = 0; j < arena.colsCount; j++) {
-                let occupied = false;
-                if (arena.grid[i][j].type === arena.GRID_CELL_TYPE.WALL) {
-                    occupied = true;
-                }
-                for (let breakableWall of breakableWalls) {
-                    const { x, y } = arena.canvasToGrid(breakableWall.x, breakableWall.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
-                    if (x === j && y === i) {
-                        occupied = true;
-                        break;
-                    }
-                }
-                for (let bomb of bombs) {
-                    const { x, y } = arena.canvasToGrid(bomb.x, bomb.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
-                    if (x === j && y === i) {
-                        occupied = true;
-                        break;
-                    }
-                }
-                row.push(occupied);
-            }
-            occupiedGrid.push(row);
-        }
-
-        return occupiedGrid;
-    }
-
-    #createGraph(occupiedGrid, arena) {
-        const graph = [];
-        
-        // initialize graph
-        for (let i = 0; i < arena.rowsCount * arena.colsCount; i++) {
-            graph.push([]);
-        }
-
-        // create graph
-        for (let i = 0; i < arena.rowsCount; i++) {
-            for (let j = 0; j < arena.colsCount; j++) {
-                if (occupiedGrid[i][j]) {
-                    continue;
-                }
-                let index = this.#getGraphIndex(i, j, arena.colsCount);
-                // upper neighbour
-                if (i > 0 && !occupiedGrid[i - 1][j]) {
-                    graph[index].push(this.#getGraphIndex(i - 1, j, arena.colsCount));
-                }
-                // lower neighbour
-                if (i < arena.rowsCount - 1 && !occupiedGrid[i + 1][j]) {
-                    graph[index].push(this.#getGraphIndex(i + 1, j, arena.colsCount));
-                }
-                // left neighbour
-                if (j > 0 && !occupiedGrid[i][j - 1]) {
-                    graph[index].push(this.#getGraphIndex(i, j - 1, arena.colsCount));
-                }
-                // right neighbour
-                if (j < arena.colsCount - 1 && !occupiedGrid[i][j + 1]) {
-                    graph[index].push(this.#getGraphIndex(i, j + 1, arena.colsCount));
-                }
-            }
-        }
-        
-        return graph;
-    }
-
-    #getRandomEmptySpace(occupiedGrid) {
-        let i = Math.floor(Math.random() * occupiedGrid.length);
-        let j = Math.floor(Math.random() * occupiedGrid[0].length);
-        while (occupiedGrid[i][j]) {
-            i = Math.floor(Math.random() * occupiedGrid.length);
-            j = Math.floor(Math.random() * occupiedGrid[0].length);
-        }
-        return { targetX: j, targetY: i };
-    }
-
-    calculatePath(playerX, playerY, screenWidth, screenHeight, arena, breakableWalls, bombs) {
-        const { bfs, dfs, targetPlayer } = this.#PROBABILITIES[this.difficulty];
-        const grid = this.#createOccupiedGrid(screenWidth, screenHeight, arena, breakableWalls, bombs);
-        const graph = this.#createGraph(grid, arena);
-
-        const choice = Math.random() * 100;
-
-        const { targetX, targetY } = choice < targetPlayer ? this.#getRandomEmptySpace(grid) : { targetX: playerX, targetY: playerY };
-
-        if (choice < bfs) {
-            this._remainingPath = this.#bfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight);
-        } else {
-            this._remainingPath = this.#dfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight);
-        }
-
-        return this.remainingPath;
-    }
-
-    nodeReached() {
-        if (this.remainingPath.length > 0) {
-            this.remainingPath.shift();
-        }
-    }
-
-    #getGridIndicesPath(graphPath, colsCount) {
-        const gridIndicesPath = [];
-        for (let node of graphPath) {
-            const { i, j } = this.#getGridIndices(node, colsCount);
-            gridIndicesPath.push({ i: i, j: j });
-        }
-        return gridIndicesPath;
-    }
-
-    #bfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight) {
-        const queue = [];
-        const enqued = new Set();
-        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
-        const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, arena.colsCount);
-
-        const prev = Array(graph.length).fill(this.#NO_ANCESTOR);
-        queue.push(startNodeGraphIndex);
-        enqued.add(startNodeGraphIndex);
-    
-        while (queue.length > 0) {
-            const node = queue.shift();
-
-            // check if target reached and return path
-            if (node === this.#getGraphIndex(targetY, targetX, arena.colsCount)) {
-                const graphPath = [];
-                let currentNode = node;
-                while (prev[currentNode] !== this.#NO_ANCESTOR) {
-                    graphPath.push(currentNode);
-                    currentNode = prev[currentNode];
-                }
-                graphPath.push(startNodeGraphIndex);
-                graphPath.reverse();
-                
-                // convert graph path to grid indices path
-                return this.#getGridIndicesPath(graphPath, arena.colsCount);
-            }
-
-            for (let neighbour of graph[node]) {
-                if (!enqued.has(neighbour)) {
-                    queue.push(neighbour);
-                    enqued.add(neighbour);
-                    prev[neighbour] = node;
-                }
-            }   
-        }
-        
-        // no path found
-        return [];
-    }
-    
-    #dfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight) {
-        const stack = [];
-        const stacked = new Set();
-        
-        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
-        const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, this.arena.colsCount);
-
-        const prev = Array(graph.length).fill(this.#NO_ANCESTOR);
-        stack.push(startNodeGraphIndex);
-        stacked.add(startNodeGraphIndex);
-
-        while (stack.length > 0) {
-            const node = stack.pop();
-
-            // check if target reached and return path
-            if (node === this.#getGraphIndex(targetY, targetX, arena.colsCount)) {
-                const graphPath = [];
-                let currentNode = node;
-                while (prev[currentNode] !== this.#NO_ANCESTOR) {
-                    graphPath.push(currentNode);
-                    currentNode = prev[currentNode];
-                }
-                graphPath.push(startNodeGraphIndex);
-                graphPath.reverse();
-                
-                // convert graph path to grid indices path
-                return this.#getGridIndicesPath(graphPath, arena.colsCount);
-            }
-            
-            // add neighbours to stack (random order)
-            for (let neighbour of graph[node].sort(() => Math.random() - 0.5)) {
-                if (!stacked.has(neighbour)) {
-                    stack.push(neighbour);
-                    stacked.add(neighbour);
-                    prev[neighbour] = node;
-                }
-            }
-        }
-
-        return []; // return path as indices of the grid
-    }
-
-    get elem() {
-        return this._elem;
-    }
-
-    get remainingPath() {
-        return this.remainingPath;
     }
 }
