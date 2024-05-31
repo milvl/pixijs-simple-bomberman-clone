@@ -1,5 +1,6 @@
 import { HEX_COLOR_CODES } from "./color_codes.js";
 import { GameSessionState } from "./game_session_states.js";
+import { LEVELS } from "./levels_config.js";
 // import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
@@ -23,12 +24,15 @@ const SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD = 7/8;
 
 const SCALE_PLAYER_TO_WALL = 0.8;
 const SCALE_BOMB_TO_WALL = 0.8;
+const SCALE_EXPLOSION_TO_WALL = 0.95;
 
 const INDEX_SCREEN_CONTENT_HUD_BACKGROUND = 0;
 const INDEX_SCREEN_CONTENT_HUD_ROUND_RECT = 1;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_TIME = 2;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE = 3;
 const INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES = 4;
+const INDEX_SCREEN_CONTENT_INFO_SCREEN_BACKGROUND = 0;
+const INDEX_SCREEN_CONTENT_INFO_SCREEN_TEXT = 1;
 
 const MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT = 0.11;
 
@@ -40,6 +44,8 @@ const TIME_CHANGE_MS_MOVEMENT_SPRITE = 250; // 0.25 seconds
 const DURATION_MS_PLAYER_HIT = 3000; // 3 seconds
 const DURATION_MS_PLAYER_HIT_BLINK = 100; // 0.1 seconds
 const DURATION_MS_LEVEL_CHANGE = 5000; // 5 seconds
+
+const WALL_SCORE_VALUE = 10;
 
 const GRID_CELL_TYPE = {
     WALL: 1,
@@ -116,17 +122,17 @@ function checkCollision(e1_x, e1_y, e1Width, e1Height, e2_x, e2_y, e2Width, e2He
  * It also handles the key inputs for the game session.
  */
 export class GameSessionManager {
-    constructor(app, settings, screenContent, textures, soundManager, key_inputs, rows_count, cols_count) {
+    constructor(app, settings, screenContent, textures, soundManager, keyInputs, rowsCount, colsCount) {
         this.app = app;
         this.endless = settings.endless;
         this.textures = textures;
         this.soundManager = soundManager;
-        this.key_inputs = key_inputs;
+        this.keyInputs = keyInputs;
 
         // variables for screen resizing
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
-        this.basis_change = false;
+        this.basisChange = false;
 
         // game stats
         this.stats = {
@@ -139,34 +145,46 @@ export class GameSessionManager {
         this.screenContent = screenContent;
         this.screenContent.pauseSign = null;
         this.screenContent.hudElems = [];
-        this.screenContent.arena = new Arena(app, textures, rows_count, cols_count);
+        this.screenContent.arena = new Arena(app, textures, rowsCount, colsCount);
         this.screenContent.player = null;
         this.screenContent.enemies = [];
         this.screenContent.breakableWalls = [];
         this.screenContent.bombs = [];
         this.screenContent.explosions = [];
         this.screenContent.exitDoor = null;
-        this.screenContent.levelChangeElems = [];
+        this.screenContent.infoScreenElems = [];
+        this.screenContent.nullable = false;        // flag for higher up module to nullify this object
 
         // other game session variables
         this.playerMovementSprites = [this.textures.player_walk01, /*this.textures.player_walk02,*/ this.textures.player_walk03];
         this.currentPlayerMovementSpriteIndex = 0;
         this.playerHitScreenInfo = null;
-        this.levelScreenInfo = null;
+        this.levelChangeInfo = null;
         
         // settings
         this.gameSessionState = null;
         this.livesLeft = settings.lives;
         // this.movementSpeed = 85;
         this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
+        this.levelsConfig = null;
         this.level = 1;
 
         // flags
         this.started = false;
+        this.ended = false;
         this.bombPlaced = false;
         this.playerMoving = false;
         this.playerMovingTime = 0;
         this.livesLeftScreenInfo = null;
+        this.leave = null;
+    }
+
+    #prepareLevelsConfig() {
+        this.levelsConfig = [];
+        
+        if (!this.endless) {
+            this.levelsConfig = [...LEVELS];
+        }    
     }
 
     /**
@@ -188,24 +206,50 @@ export class GameSessionManager {
             }
         }
 
+        const enterFunc = () => {
+            if (this.started) {
+                this.leave = true;
+                console.log(MODULE_NAME_PREFIX, 'Leaving game session');
+            }
+        }
+
         const escFunc = () => {
-            throw new Error('ESCAPE KEY: Not implemented yet.');
+            if (this.started) {
+                if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS) {
+                    this.keyInputs.left.release = null;
+                    this.keyInputs.right.release = null;
+                    this.keyInputs.space.press = null;
+                    this.keyInputs.pause.press = null;
+                    this.keyInputs.enter.press = enterFunc;
+                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT);
+                    return;
+                }
+                if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
+                    this.keyInputs.enter.press = null;
+                    this.keyInputs.left.release = arrowUpFunc;
+                    this.keyInputs.right.release = arrowUpFunc;
+                    this.keyInputs.space.press = spaceFunc;
+                    this.keyInputs.pause.press = pauseFunc;
+
+                    this.leave = false;
+                }
+            }
         }
 
         const pauseFunc = () => {
             if (this.started) {
                 if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
-                    this.key_inputs.left.release = null;
-                    this.key_inputs.right.release = null;
-                    this.key_inputs.space.press = null;
-                    this.key_inputs.esc.press = null;
+                    this.keyInputs.left.release = null;
+                    this.keyInputs.right.release = null;
+                    this.keyInputs.space.press = null;
+                    this.keyInputs.esc.press = null;
                     this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
                 }
                 else {
-                    this.key_inputs.left.release = arrowUpFunc;
-                    this.key_inputs.right.release = arrowUpFunc;
-                    this.key_inputs.space.press = spaceFunc;
-                    this.key_inputs.esc.press = escFunc;
+                    this.keyInputs.left.release = arrowUpFunc;
+                    this.keyInputs.right.release = arrowUpFunc;
+                    this.keyInputs.space.press = spaceFunc;
+                    this.keyInputs.esc.press = escFunc;
                     this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
                     this.#handleGameSessionPausedUpdate(true);
                 }
@@ -213,38 +257,41 @@ export class GameSessionManager {
         }
 
         // arrow keys for movement
-        this.key_inputs.left.release = arrowUpFunc;
-        this.key_inputs.right.release = arrowUpFunc;
-        this.key_inputs.up.release = arrowUpFunc;
-        this.key_inputs.down.release = arrowUpFunc;
+        this.keyInputs.left.release = arrowUpFunc;
+        this.keyInputs.right.release = arrowUpFunc;
+        this.keyInputs.up.release = arrowUpFunc;
+        this.keyInputs.down.release = arrowUpFunc;
         
         // spacebar for bomb
-        this.key_inputs.space.press = spaceFunc;
+        this.keyInputs.space.press = spaceFunc;
 
         // esc for returning to main menu (with prompt)
-        this.key_inputs.esc.press = escFunc;
+        this.keyInputs.esc.press = escFunc;
 
         // p for pausing the game
-        this.key_inputs.pause.press = pauseFunc;
+        this.keyInputs.pause.press = pauseFunc;
     }
 
     /**
      * Cleans up the key inputs for the game session.
      * This is called when the game session is stopped.
-     * // TODO USE
      */
     #cleanUpKeyInputs() {
-        this.key_inputs.left.press = null;
-        this.key_inputs.left.release = null;
-        this.key_inputs.right.press = null;
-        this.key_inputs.right.release = null;
-        this.key_inputs.up.press = null;
-        this.key_inputs.up.release = null;
-        this.key_inputs.down.press = null;
-        this.key_inputs.down.release = null;
-        this.key_inputs.space.press = null;
-        this.key_inputs.esc.press = null;
-        this.key_inputs.pause.press = null;
+        this.keyInputs.left.press = null;
+        this.keyInputs.left.release = null;
+        this.keyInputs.right.press = null;
+        this.keyInputs.right.release = null;
+        this.keyInputs.up.press = null;
+        this.keyInputs.up.release = null;
+        this.keyInputs.down.press = null;
+        this.keyInputs.down.release = null;
+        this.keyInputs.space.press = null;
+        this.keyInputs.esc.press = null;
+        this.keyInputs.pause.press = null;
+        this.keyInputs.enter.press = null;
+
+        // force player to stop moving
+        this.playerMoving = false;
     }
 
     /**
@@ -343,13 +390,23 @@ export class GameSessionManager {
      * @param {PIXI.Sprite} entity - The entity to spawn.
      * @param {Number} [start_x=null] - The starting x-coordinate.
      * @param {Number} [start_y=null] - The starting y-coordinate.
-     * @param {Number} [scale=1] - The scale of the entity.
+     * @param {Number} [scaleToWall=1] - The scale of the entity to the wall.
      */
-    #spawnEntity(entity, start_x = null, start_y = null, scale = 1) {
+    #spawnEntity(entity, start_x = null, start_y = null, scaleToWall = 1) {
         let wallWidth = this.screenContent.arena.wallWidth
         let wallHeight = this.screenContent.arena.wallHeight
-        entity.width = wallWidth * scale;
-        entity.height = wallHeight * scale; //TODO SCALING FOR SPRITES
+        entity.width = wallWidth * scaleToWall;
+        entity.height = wallHeight * scaleToWall;
+
+        // if entity scalling is negative, force it to be positive (to avoid spawning issues)
+        // TODO remove for testing xd
+        if (entity.scale.x < 0) {
+            entity.scale.x *= -1;
+        }
+        if (entity.scale.y < 0) {
+            entity.scale.y *= -1;
+        }
+
         let { x, y } = { x: null, y: null };
         if (start_x !== null && start_y !== null) {
             x = start_x;
@@ -395,17 +452,46 @@ export class GameSessionManager {
             }
         }
         this.screenContent.explosions = [];
-
-        // walls // TODO walls
-
-        // enemies // TODO enemies
-
-        // player
-        if (!this.screenContent.player) {
-            this.screenContent.player = new PIXI.Sprite(this.textures.player);
+        // for (let enemy of this.screenContent.enemies) {
+        //     this.app.stage.removeChild(enemy);
+        // }
+        for (let wall of this.screenContent.breakableWalls) {
+            this.app.stage.removeChild(wall);
         }
+        this.screenContent.breakableWalls = [];
 
-        this.#spawnEntity(this.screenContent.player, null, null, SCALE_PLAYER_TO_WALL);
+        // // enemies // TODO enemies
+
+        // // player
+        // if (!this.screenContent.player) {
+        //     this.screenContent.player = new PIXI.Sprite(this.textures.player);
+        // }
+
+        // this.#spawnEntity(this.screenContent.player, null, null, SCALE_PLAYER_TO_WALL);
+
+        if (!this.endless) {
+            const levelConfig = this.levelsConfig[this.level - 1];
+
+            // breakable walls
+            for (let wall of levelConfig.breakableWalls) {
+                const { gridX, gridY } = wall;
+                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, this.app.screen.width, this.app.screen.height);
+                let breakableWall = new PIXI.Sprite(this.textures.break_wall);
+                this.#spawnEntity(breakableWall, x, y);
+                this.screenContent.breakableWalls.push(breakableWall);
+            }
+
+            // TODO enemies
+            
+            // player
+            const { gridX, gridY } = levelConfig.player;
+            const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, this.app.screen.width, this.app.screen.height);
+            this.screenContent.player = new PIXI.Sprite(this.textures.player);
+            this.#spawnEntity(this.screenContent.player, x, y, SCALE_PLAYER_TO_WALL);
+        }
+        else {
+            // TODO randomize (endless mode)
+        }
     }
 
     /**
@@ -416,13 +502,14 @@ export class GameSessionManager {
      */
     #updateEntityPosition(entity, deltaX, deltaY) {
         // TODO NOTE: handled separately to allow sliding along objects
-        let {horizontal: willCollideHorizontalBomb, vertical: willCollideVerticalBomb} = this.#checkBombCollision(entity, deltaX, deltaY);
+        let {horizontal: willCollideHorizontalBomb, vertical: willCollideVerticalBomb} = this.#checkEntitiesCollision(entity, deltaX, deltaY, this.screenContent.bombs.map(bomb => bomb.bomb));
         let {horizontal: willCollideHorizontalWall, vertical: willCollideVerticalWall} = this.screenContent.arena.checkWallCollision(entity, deltaX, deltaY);
+        let {horizontal: willCollideHorizontalBreakableWall, vertical: willCollideVerticalBreakableWall} = this.#checkEntitiesCollision(entity, deltaX, deltaY, this.screenContent.breakableWalls);
 
-        if (!willCollideHorizontalBomb && !willCollideHorizontalWall) {
+        if (!willCollideHorizontalBomb && !willCollideHorizontalWall && !willCollideHorizontalBreakableWall) {
             entity.x += deltaX;
         }
-        if (!willCollideVerticalBomb && !willCollideVerticalWall) {
+        if (!willCollideVerticalBomb && !willCollideVerticalWall && !willCollideVerticalBreakableWall) {
             entity.y += deltaY;
         }
 
@@ -463,7 +550,7 @@ export class GameSessionManager {
         let deltaX = 0;
         let deltaY = 0;
 
-        if (this.key_inputs.left.isDown) {
+        if (this.keyInputs.left.isDown) {
             deltaX -= distance;
             if (this.screenContent.player.scale.x > 0) {
                 this.screenContent.player.scale.x *= -1;
@@ -471,7 +558,7 @@ export class GameSessionManager {
             }
             this.playerMoving = true;
         }
-        if (this.key_inputs.right.isDown) {
+        if (this.keyInputs.right.isDown) {
             deltaX += distance;
             if (this.screenContent.player.scale.x < 0) {
                 this.screenContent.player.scale.x *= -1;
@@ -479,15 +566,16 @@ export class GameSessionManager {
             }
             this.playerMoving = true;
         }
-        if (this.key_inputs.up.isDown) {
+        if (this.keyInputs.up.isDown) {
             deltaY -= distance;
             this.playerMoving = true;
         }
-        if (this.key_inputs.down.isDown) {
+        if (this.keyInputs.down.isDown) {
             deltaY += distance;
             this.playerMoving = true;
         }
 
+        // texture swapping
         if (this.playerMoving) {
             this.playerMovingTime += delta.elapsedMS;
 
@@ -536,7 +624,7 @@ export class GameSessionManager {
             if (this.screenContent.arena.grid[dir.y][dir.x].type === GRID_CELL_TYPE.EMPTY) {
                 explosion = new PIXI.Sprite(this.textures.explosion);
                 let { x, y } = this.screenContent.arena.gridToCanvas(dir.x, dir.y, this.app.screen.width, this.app.screen.height);
-                this.#spawnEntity(explosion, x, y);
+                this.#spawnEntity(explosion, x, y, SCALE_EXPLOSION_TO_WALL);
                 explosionInstance.explosions.push(explosion);
             }
         }
@@ -549,43 +637,49 @@ export class GameSessionManager {
      * Updates the explosions on the screen.
      */
     #updateExplosions() {
-        for (let explosion_instance of this.screenContent.explosions) {
-            const explosion_time = this.stats.time - explosion_instance.time;
-            if (explosion_time >= EXPLOSION_DURATION_MS) {
-                for (let explosion of explosion_instance.explosions) {
+        const toRemove = [];
+        for (let explosionInstance of this.screenContent.explosions) {
+            const explosionTime = this.stats.time - explosionInstance.time;
+            if (explosionTime >= EXPLOSION_DURATION_MS) {
+                for (let explosion of explosionInstance.explosions) {
                     this.app.stage.removeChild(explosion);
                 }
-                this.screenContent.explosions.splice(this.screenContent.explosions.indexOf(explosion_instance), 1);
+                toRemove.push(explosionInstance);
             }
+        }
+        // remove the explosion objects that are to be removed
+        for (let explosionInstance of toRemove) {
+            this.screenContent.explosions.splice(this.screenContent.explosions.indexOf(explosionInstance), 1);
         }
     }
 
     /**
-     * Checks if the entity will collide with a bomb.
+     * Checks if the entity will collide with any entity from given array.
      * Information returned in separate horizontal and vertical flags 
      * to allow sliding along objects.
      * @param {PIXI.Sprite} entity - The entity to check.
      * @param {Number} deltaX - The change in x-coordinate.
      * @param {Number} deltaY - The change in y-coordinate.
+     * @param {Array} entities - The entities to check against.
      * @returns {Object} An object with the horizontal and vertical collision flags.
      */
-    #checkBombCollision(entity, deltaX, deltaY) {
+    #checkEntitiesCollision(entity, deltaX, deltaY, entities) {
         let willCollideHorizontal = false;
         let willCollideVertical = false;
 
         const {minX, minY} = entity.getBounds();
 
-        for (let bomb of this.screenContent.bombs) {
-            const bombBounds = bomb.bomb.getBounds();
+        for (let comparedEntity of entities) {
+            const comparedEntityBounds = comparedEntity.getBounds();
             // if player is already colliding with bomb, let them leave
-            if (checkCollision(minX, minY, entity.width, entity.height, bombBounds.x, bombBounds.y, bombBounds.width, bombBounds.height)) {
+            if (checkCollision(minX, minY, entity.width, entity.height, comparedEntityBounds.x, comparedEntityBounds.y, comparedEntityBounds.width, comparedEntityBounds.height)) {
                 return {willCollideHorizontal, willCollideVertical};
             }
             if (!willCollideHorizontal) {
-                willCollideHorizontal = checkCollision(minX, minY, entity.width, entity.height, bombBounds.x, bombBounds.y, bombBounds.width, bombBounds.height, deltaX);
+                willCollideHorizontal = checkCollision(minX, minY, entity.width, entity.height, comparedEntityBounds.x, comparedEntityBounds.y, comparedEntityBounds.width, comparedEntityBounds.height, deltaX);
             }
             if (!willCollideVertical) {
-                willCollideVertical = checkCollision(minX, minY, entity.width, entity.height, bombBounds.x, bombBounds.y, bombBounds.width, bombBounds.height, 0, deltaY);
+                willCollideVertical = checkCollision(minX, minY, entity.width, entity.height, comparedEntityBounds.x, comparedEntityBounds.y, comparedEntityBounds.width, comparedEntityBounds.height, 0, deltaY);
             }
         }
 
@@ -619,6 +713,7 @@ export class GameSessionManager {
         }
 
         // update each bomb
+        const toRemove = [];
         for (let bomb of this.screenContent.bombs) {
             const bombTimePlaced = this.stats.time - bomb.time;
 
@@ -632,8 +727,12 @@ export class GameSessionManager {
                 this.app.stage.removeChild(bomb.bomb);
 
                 this.#createExplosion(bomb.cellX, bomb.cellY);
-                this.screenContent.bombs.splice(this.screenContent.bombs.indexOf(bomb), 1);
+                toRemove.push(bomb);
             }
+        }
+        // remove the bomb objects that are to be removed
+        for (let bomb of toRemove) {
+            this.screenContent.bombs.splice(this.screenContent.bombs.indexOf(bomb), 1);
         }
     }
 
@@ -648,6 +747,36 @@ export class GameSessionManager {
             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT);
             return;
         }
+
+        this.#handleEntityGroupHitcheck(this.screenContent.breakableWalls, WALL_SCORE_VALUE);
+    }
+
+    #handleEntityGroupHitcheck(entities, scoreValue) {
+        let entitiesHit = 0;
+        let score = 0;
+        const toRemove = [];
+        for (let entity of entities) {
+            const entityBounds = entity.getBounds();
+            for (let explosionInstance of this.screenContent.explosions) {
+                for (let explosion of explosionInstance.explosions) {
+                    const explosionBounds = explosion.getBounds();
+                    if (checkCollision(explosionBounds.x, explosionBounds.y, explosionBounds.width, explosionBounds.height, entityBounds.x, entityBounds.y, entityBounds.width, entityBounds.height)) {
+                        this.app.stage.removeChild(entity);
+                        entitiesHit += 1;
+                        score += scoreValue;
+                        toRemove.push(entity);
+                        break;
+                    }
+                }
+            }
+        }
+        // remove the entities that are to be removed
+        for (let entity of toRemove) {
+            entities.splice(entities.indexOf(entity), 1);
+        }
+
+        score = score * entitiesHit;
+        this.stats.score += score;
     }
 
     /**
@@ -677,7 +806,12 @@ export class GameSessionManager {
             const doorBounds = this.screenContent.exitDoor.getBounds();
             if (playerBounds.x >= doorBounds.x && playerBounds.x + playerBounds.width <= doorBounds.x + doorBounds.width &&
                 playerBounds.y >= doorBounds.y && playerBounds.y + playerBounds.height <= doorBounds.y + doorBounds.height) {
-                throw new Error('EXIT DOOR: Not implemented yet.');
+                // player entered door
+                // remove the config from the list
+                this.levelsConfig.splice(this.level - 1, 1);
+                this.level += 1;
+                this.#cleanUpKeyInputs();
+                this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN);
             }
 
         }
@@ -715,6 +849,38 @@ export class GameSessionManager {
         this.app.stage.addChild(this.screenContent.pauseSign);
     }
 
+    #drawInfoScreen(text) {
+        const { width: windowWidth, height: windowHeight } = this.app.screen;
+        
+        const background = new PIXI.Graphics();
+        background.rect(0, 0, windowWidth, windowHeight);
+        background.fill(HEX_COLOR_CODES.BLACK);
+        this.app.stage.addChild(background);
+
+        const infoScreenText = this.#getSizedText(text, windowWidth, windowHeight, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
+        infoScreenText.x = (windowWidth - infoScreenText.width) / 2;
+        infoScreenText.y = (windowHeight - infoScreenText.height) / 2;
+        this.app.stage.addChild(infoScreenText);
+
+        this.screenContent.infoScreenElems = [background, infoScreenText];
+    }
+
+    #redrawInfoScreen() {
+        const { width: windowWidth, height: windowHeight } = this.app.screen;
+        // change background width and height
+        this.screenContent.infoScreenElems[INDEX_SCREEN_CONTENT_INFO_SCREEN_BACKGROUND].width = windowWidth;
+        this.screenContent.infoScreenElems[INDEX_SCREEN_CONTENT_INFO_SCREEN_BACKGROUND].height = windowHeight;
+
+        // remove old text
+        this.app.stage.removeChild(this.screenContent.infoScreenElems[INDEX_SCREEN_CONTENT_INFO_SCREEN_TEXT]);
+        const text = this.screenContent.infoScreenElems[INDEX_SCREEN_CONTENT_INFO_SCREEN_TEXT].text;
+        const infoScreenText = this.#getSizedText(text, windowWidth, windowHeight, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
+        infoScreenText.x = (windowWidth - infoScreenText.width) / 2;
+        infoScreenText.y = (windowHeight - infoScreenText.height) / 2;
+        this.screenContent.infoScreenElems[INDEX_SCREEN_CONTENT_INFO_SCREEN_TEXT] = infoScreenText;
+        this.app.stage.addChild(infoScreenText);
+    }
+
     /**
      * Handles updating the game session when it is in progress.
      * Does not update when the screen is being resized.
@@ -722,7 +888,14 @@ export class GameSessionManager {
      */
     #handleGameSessionInProgressUpdate(delta) {
         // process entity updates when the screen is not being resized
-        if (!this.basis_change) {
+        if (!this.basisChange) {
+            // check if player finished last level
+            if (!this.endless && this.levelsConfig.length === 0) {
+                // TODO game over
+            }
+
+
+
             this.stats.time = this.stats.time + delta.elapsedMS;
 
             this.#updateStats();
@@ -742,13 +915,13 @@ export class GameSessionManager {
     }
 
     #handleGameSessionPlayerHitUpdate(delta) {
-        if (this.key_inputs.left.release 
-            || this.key_inputs.right.release 
-            || this.key_inputs.up.release 
-            || this.key_inputs.down.release
-            || this.key_inputs.space.press
-            || this.key_inputs.esc.press
-            || this.key_inputs.pause.press) 
+        if (this.keyInputs.left.release 
+            || this.keyInputs.right.release 
+            || this.keyInputs.up.release 
+            || this.keyInputs.down.release
+            || this.keyInputs.space.press
+            || this.keyInputs.esc.press
+            || this.keyInputs.pause.press) 
         {
             this.#cleanUpKeyInputs();
         }
@@ -797,33 +970,24 @@ export class GameSessionManager {
     }
 
     #handleGameSessionLevelInfoScreen(delta) {
-        if (!this.levelScreenInfo) {
-            this.levelScreenInfo = {};
-            this.levelScreenInfo.levelChangeTime = 0;
+        // if not already initialized
+        if (!this.levelChangeInfo) {
+            this.levelChangeInfo = {};
+            this.levelChangeInfo.levelChangeTime = 0;
 
-            const background = new PIXI.Graphics();
-            background.rect(0, 0, this.app.screen.width, this.app.screen.height);
-            background.fill(HEX_COLOR_CODES.BLACK);
-            this.screenContent.levelChangeElems.push(background);
-            this.app.stage.addChild(background);
-
-            const { width: windowWidth, height: windowHeight } = this.app.screen;
             const newLevelString = `Level: ${this.level}\nLives left: ${this.stats.lives}`;
-            const newLevelText = this.#getSizedText(newLevelString, windowWidth, windowHeight, SCALE_HEIGHT_PAUSE_SIGN_TO_SCREEN, SCALE_WIDTH_PAUSE_SIGN_TO_SCREEN);
-            newLevelText.x = (windowWidth - newLevelText.width) / 2;
-            newLevelText.y = (windowHeight - newLevelText.height) / 2;
-            this.screenContent.levelChangeElems.push(newLevelText);
-            this.app.stage.addChild(newLevelText);
+            this.#drawInfoScreen(newLevelString);
 
             this.soundManager.playNewLevel();
         }
 
-        if (this.levelScreenInfo.levelChangeTime >= DURATION_MS_LEVEL_CHANGE) {
-            this.levelScreenInfo = null;
-            for (let elem of this.screenContent.levelChangeElems) {
+        // if its time to switch to the game session
+        if (this.levelChangeInfo.levelChangeTime >= DURATION_MS_LEVEL_CHANGE) {
+            this.levelChangeInfo = null;
+            for (let elem of this.screenContent.infoScreenElems) {
                 this.app.stage.removeChild(elem);
             }
-            this.screenContent.levelChangeElems = [];
+            this.screenContent.infoScreenElems = [];
 
             this.#setUpKeyInputs();
             this.#prepareEntities();
@@ -831,7 +995,7 @@ export class GameSessionManager {
             return;
         }
 
-        this.levelScreenInfo.levelChangeTime += delta.elapsedMS;
+        this.levelChangeInfo.levelChangeTime += delta.elapsedMS;
     }
 
     /**
@@ -852,12 +1016,36 @@ export class GameSessionManager {
         }
     }
 
-    #handleGameSessionLeavePromptUpdate(delta) {
-        // TODO
+    #handleGameSessionLeavePromptUpdate() {
+        if (this.playerMoving) {
+            this.screenContent.player.texture = this.textures.player;
+            this.playerMoving = false;
+        }
+
+        if (this.screenContent.infoScreenElems.length === 0) {
+            const leavePromptText = 'Are you sure you want to leave?\n\nPress ENTER to leave the game.\nPress ESC to return to the game.';
+            this.#drawInfoScreen(leavePromptText);
+        }
+
+        if (this.leave === true) {
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
+        }
+        if (this.leave === false) {
+            for (let elem of this.screenContent.infoScreenElems) {
+                this.app.stage.removeChild(elem);
+            }
+            this.screenContent.infoScreenElems = [];
+            this.leave = null;
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+        }
     }
 
-    #handleGameSessionGameEndUpdate(delta) {
-        // TODO
+    #handleGameSessionGameEndUpdate() {
+        // left on user choice
+        if (this.leave && this.leave === true) {
+            this.ended = true;
+            this.leave = null;
+        }
     }
 
     /**
@@ -866,6 +1054,9 @@ export class GameSessionManager {
     start() {
         this.#setUpKeyInputs();
         this.gameSessionState = new GameSessionState();
+
+        this.#prepareLevelsConfig();
+        console.log(MODULE_NAME_PREFIX, 'Levels config:', this.levelsConfig);
 
         this.screenContent.arena.draw();
         this.#drawStats();
@@ -880,9 +1071,12 @@ export class GameSessionManager {
      * Redraws the game session. Used when the screen is resized.
      */
     redraw() {
-        this.basis_change = true;
+        this.basisChange = true;
         
         this.screenContent.arena.redraw();
+        for (let breakableWall of this.screenContent.breakableWalls) {
+            this.#redrawEntity(breakableWall);
+        }
         this.#drawStats();
         this.#redrawEntity(this.screenContent.player, SCALE_PLAYER_TO_WALL);
         for (let bomb of this.screenContent.bombs) {
@@ -900,10 +1094,15 @@ export class GameSessionManager {
             this.#redrawEntity(this.screenContent.exitDoor);
         }
 
+        if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN
+            || this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
+            this.#redrawInfoScreen();
+        }
+
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
         this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
-        this.basis_change = false;
+        this.basisChange = false;
     }
 
     /**
@@ -941,6 +1140,59 @@ export class GameSessionManager {
                 console.error(MODULE_NAME_PREFIX + "Invalid game state: " + this.gameSessionState.state);
                 throw new Error("Invalid game state: " + this.gameSessionState.state);
         }
+    }
+
+    /**
+     * Cleans up the game session.
+     */
+    cleanUp() {
+        this.#cleanUpKeyInputs();
+        this.screenContent.arena.cleanUp();
+        for (let elem of this.screenContent.hudElems) {
+            this.app.stage.removeChild(elem);
+        }
+        
+        for (let elem of this.screenContent.infoScreenElems) {
+            this.app.stage.removeChild(elem);
+        }
+        
+        if (this.screenContent.pauseSign) {
+            this.app.stage.removeChild(this.screenContent.pauseSign);
+        }
+        
+        if (this.screenContent.exitDoor) {
+            this.app.stage.removeChild(this.screenContent.exitDoor);
+        }
+        
+        for (let breakableWall of this.screenContent.breakableWalls) {
+            this.app.stage.removeChild(breakableWall);
+        }
+        
+        for (let bomb of this.screenContent.bombs) {
+            this.app.stage.removeChild(bomb.bomb);
+        }
+        
+        for (let explosionInstance of this.screenContent.explosions) {
+            for (let explosion of explosionInstance.explosions) {
+                this.app.stage.removeChild(explosion);
+            }
+        }
+        
+        for (let enemy of this.screenContent.enemies) {
+            this.app.stage.removeChild(enemy);
+        }
+
+        if (this.screenContent.player) {
+            this.app.stage.removeChild(this.screenContent.player);
+        }
+        
+        this.screenContent.nullable = true;
+        this.levelsConfig = null;
+        this.soundManager = null;
+        this.textures = null;
+        this.app = null;
+        this.started = false;
+        this.ended = false;
     }
 }
 
@@ -1128,5 +1380,21 @@ class Arena {
                 elem.y = y;
             }
         }
+    }
+
+    /**
+     * Cleans up the arena.
+     */
+    cleanUp() {
+        for (let row of this.grid) {
+            for (let cell of row) {
+                this.app.stage.removeChild(cell.elem);
+            }
+        }
+        this.grid = null;
+        this.wallWidth = null;
+        this.wallHeight = null;
+        this.wallsElements = null;
+        this.freeSpaceElements = null;
     }
 }

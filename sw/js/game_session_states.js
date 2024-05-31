@@ -10,7 +10,6 @@ export class GameSessionState {
     GAME_SESSION_STATE_PAUSED = 3;
     GAME_SESSION_STATE_LEAVE_PROMPT = 4;
     GAME_SESSION_STATE_GAME_END = 5;
-    GAME_SESSION_STATE_RETURN_TO_MENU = 6;
 
     constructor() {
         this.gameState = this.GAME_SESSION_STATE_IN_PROGRESS;
@@ -27,6 +26,7 @@ export class GameSessionState {
                     case this.GAME_SESSION_STATE_PLAYER_HIT:
                     case this.GAME_SESSION_STATE_PAUSED:
                     case this.GAME_SESSION_STATE_LEAVE_PROMPT:
+                    case this.GAME_SESSION_STATE_LEVEL_INFO_SCREEN:
                     case this.GAME_SESSION_STATE_GAME_END:
                         this.gameState = newState;
                         console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
@@ -71,7 +71,7 @@ export class GameSessionState {
                 break;
             
             case this.GAME_SESSION_STATE_LEAVE_PROMPT:
-                if (newState === this.GAME_SESSION_STATE_IN_PROGRESS || newState === this.GAME_SESSION_STATE_RETURN_TO_MENU) {
+                if (newState === this.GAME_SESSION_STATE_IN_PROGRESS || newState === this.GAME_SESSION_STATE_GAME_END) {
                     this.gameState = newState;
                     console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
                 }

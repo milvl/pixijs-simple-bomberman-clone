@@ -10,7 +10,7 @@ const ARENA_COLS = 21;
 const DEFAULT_SETTINGS = {
     lives: 3,
     volume: true,
-    endless: false
+    endless: false,
 };
 
 const DEFAULT_MAIN_MENU_CONTENT = {
@@ -204,15 +204,24 @@ export class Game {
     #initGameSession(delta) {
         this.screenContent = {};
         this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.soundManager, this.keyInputs, ARENA_ROWS, ARENA_COLS);
-        this.drawingManager.start(delta);
+        this.drawingManager.start();
     }
 
     #handleGameSessionUpdate(delta) {
         if (this.screenContent === null) {
             this.#initGameSession();
         }
-        this.drawingManager.update(delta);
-        // throw new Error('Game session to be implemented.');
+        if (this.drawingManager.ended === true) {
+            this.drawingManager.cleanUp();
+            this.drawingManager = null;
+            if (this.screenContent.nullable === true) {
+                this.screenContent = null;
+            }
+            this.gameState.switchState(GAME_STATES.MAIN_MENU);
+        }
+        else {
+            this.drawingManager.update(delta);
+        }
     }
 
     /**
@@ -318,10 +327,6 @@ export class Game {
                 break;
             case GAME_STATES.GAME_SESSION:
                 this.#handleGameSessionUpdate(delta);
-                break;
-            case GAME_STATES.GAME_OVER:
-                console.error(MODULE_NAME_PREFIX, 'Game over to be implemented.');
-                throw new Error('Game over to be implemented.');
                 break;
             case GAME_STATES.SETTINGS:
                 this.#handleSettingsUpdate();
