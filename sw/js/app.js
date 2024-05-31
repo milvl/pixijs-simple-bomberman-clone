@@ -30,12 +30,12 @@ const MANIFEST = {
                 { alias: "wall", src: "./img/wall.png" },
                 { alias: "break_wall", src: "./img/break_wall.png" },
                 { alias: "door", src: "./img/door.png" },
-                { alias: "ghost1", src: "./img/ghost1.png" },
-                { alias: "ghost2", src: "./img/ghost2.png" },
-                { alias: "ghost3", src: "./img/ghost3.png" },
-                { alias: "ghost4", src: "./img/ghost4.png" },
-                { alias: "ghost5", src: "./img/ghost5.png" },
-                { alias: "ghost6", src: "./img/ghost6.png" },
+                { alias: "ghost01", src: "./img/ghost01.png" },
+                { alias: "ghost02", src: "./img/ghost02.png" },
+                { alias: "ghost03", src: "./img/ghost03.png" },
+                { alias: "ghost04", src: "./img/ghost04.png" },
+                { alias: "ghost05", src: "./img/ghost05.png" },
+                { alias: "ghost06", src: "./img/ghost06.png" },
             ]
         },
         {

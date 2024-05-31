@@ -201,6 +201,10 @@ export class Game {
         }
     }
 
+    /**
+     * Initializes the game session.
+     * @param {Number} delta - The time delta. 
+     */
     #initGameSession(delta) {
         this.screenContent = {};
         this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.soundManager, this.keyInputs, ARENA_ROWS, ARENA_COLS);
@@ -214,7 +218,7 @@ export class Game {
         if (this.drawingManager.ended === true) {
             this.drawingManager.cleanUp();
             this.drawingManager = null;
-            if (this.screenContent.nullable === true) {
+            if (this.screenContent.nullable && this.screenContent.nullable === true) {
                 this.screenContent = null;
             }
             this.gameState.switchState(GAME_STATES.MAIN_MENU);

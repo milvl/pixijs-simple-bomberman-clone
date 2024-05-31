@@ -23,6 +23,7 @@ const SCALE_WIDTH_OFFSET_SCORE_TEXT_TO_HUD = 1/2;
 const SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD = 7/8;
 
 const SCALE_PLAYER_TO_WALL = 0.8;
+const SCALE_ENEMY_TO_WALL = 0.9;
 const SCALE_BOMB_TO_WALL = 0.8;
 const SCALE_EXPLOSION_TO_WALL = 0.95;
 
@@ -37,10 +38,10 @@ const INDEX_SCREEN_CONTENT_INFO_SCREEN_TEXT = 1;
 const MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT = 0.11;
 
 const DURATION_MS_BOMB = 3000; // 3 seconds
-const TIME_CHANGE_MS_BOMB_TEXTURE = 500; // 0.5 seconds
-const EXPLOSION_DURATION_MS = 500; // 0.5 second
+const DURATION_MS_BOMB_TEXTURE_CHANGE = 500; // 0.5 seconds
+const DURATION_MS_EXPLOSION = 500; // 0.5 second
 const EASTER_EGG_TIME = 359990000; // 59 minutes 59 seconds
-const TIME_CHANGE_MS_MOVEMENT_SPRITE = 250; // 0.25 seconds
+const DURATION_MS_MOVEMENT_SPRITE_CHANGE = 250; // 0.25 seconds
 const DURATION_MS_PLAYER_HIT = 3000; // 3 seconds
 const DURATION_MS_PLAYER_HIT_BLINK = 100; // 0.1 seconds
 const DURATION_MS_LEVEL_CHANGE = 5000; // 5 seconds
@@ -157,9 +158,12 @@ export class GameSessionManager {
 
         // other game session variables
         this.playerMovementSprites = [this.textures.player_walk01, /*this.textures.player_walk02,*/ this.textures.player_walk03];
+        this.enemySprites = [this.textures.ghost01, this.textures.ghost02, this.textures.ghost03, this.textures.ghost04, this.textures.ghost05, this.textures.ghost06];
         this.currentPlayerMovementSpriteIndex = 0;
+        this.currentEnemySpriteIndex = 0;
         this.playerHitScreenInfo = null;
         this.levelChangeInfo = null;
+        this.enemiesSpriteTimer = null;
         
         // settings
         this.gameSessionState = null;
@@ -452,25 +456,22 @@ export class GameSessionManager {
             }
         }
         this.screenContent.explosions = [];
-        // for (let enemy of this.screenContent.enemies) {
-        //     this.app.stage.removeChild(enemy);
-        // }
+
+        for (let enemy of this.screenContent.enemies) {
+            this.app.stage.removeChild(enemy.elem);
+        }
+        this.screenContent.enemies = [];
+
         for (let wall of this.screenContent.breakableWalls) {
             this.app.stage.removeChild(wall);
         }
         this.screenContent.breakableWalls = [];
 
-        // // enemies // TODO enemies
+        this.enemiesSpriteTimer = 0;
 
-        // // player
-        // if (!this.screenContent.player) {
-        //     this.screenContent.player = new PIXI.Sprite(this.textures.player);
-        // }
-
-        // this.#spawnEntity(this.screenContent.player, null, null, SCALE_PLAYER_TO_WALL);
-
+        // prepare entities
         if (!this.endless) {
-            const levelConfig = this.levelsConfig[this.level - 1];
+            const levelConfig = this.levelsConfig[0];
 
             // breakable walls
             for (let wall of levelConfig.breakableWalls) {
@@ -481,7 +482,15 @@ export class GameSessionManager {
                 this.screenContent.breakableWalls.push(breakableWall);
             }
 
-            // TODO enemies
+            // enemies
+            for (let enemy of levelConfig.enemies) {
+                const { gridX, gridY } = enemy;
+                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, this.app.screen.width, this.app.screen.height);
+                let enemySprite = new PIXI.Sprite(this.textures.ghost01);
+                this.#spawnEntity(enemySprite, x, y, SCALE_ENEMY_TO_WALL);
+                const enemyObj = new Enemy(enemySprite, enemy.difficulty);
+                this.screenContent.enemies.push(enemyObj);
+            }
             
             // player
             const { gridX, gridY } = levelConfig.player;
@@ -514,6 +523,22 @@ export class GameSessionManager {
         }
 
         // TODO hit check
+    }
+
+    /**
+     * Updates the enemy sprites.
+     * @param {Object} delta - The delta object.
+     */
+    #updateEnemySprites(delta) {
+        if (this.enemiesSpriteTimer > DURATION_MS_MOVEMENT_SPRITE_CHANGE) {
+            for (let enemy of this.screenContent.enemies) {
+                const enemySprite = enemy.elem;
+                this.currentEnemySpriteIndex = (this.currentEnemySpriteIndex + 1) % this.enemySprites.length;
+                enemySprite.texture = this.enemySprites[this.currentEnemySpriteIndex];
+            }
+            this.enemiesSpriteTimer -= DURATION_MS_MOVEMENT_SPRITE_CHANGE;
+        }
+        this.enemiesSpriteTimer += delta.elapsedMS;
     }
 
     /**
@@ -579,10 +604,10 @@ export class GameSessionManager {
         if (this.playerMoving) {
             this.playerMovingTime += delta.elapsedMS;
 
-            if (this.playerMovingTime > TIME_CHANGE_MS_MOVEMENT_SPRITE) {
+            if (this.playerMovingTime > DURATION_MS_MOVEMENT_SPRITE_CHANGE) {
                 this.currentPlayerMovementSpriteIndex = (this.currentPlayerMovementSpriteIndex + 1) % this.playerMovementSprites.length;
                 this.screenContent.player.texture = this.playerMovementSprites[this.currentPlayerMovementSpriteIndex];
-                this.playerMovingTime -= TIME_CHANGE_MS_MOVEMENT_SPRITE;
+                this.playerMovingTime -= DURATION_MS_MOVEMENT_SPRITE_CHANGE;
             }
         } else {
             this.screenContent.player.texture = this.textures.player;
@@ -640,7 +665,7 @@ export class GameSessionManager {
         const toRemove = [];
         for (let explosionInstance of this.screenContent.explosions) {
             const explosionTime = this.stats.time - explosionInstance.time;
-            if (explosionTime >= EXPLOSION_DURATION_MS) {
+            if (explosionTime >= DURATION_MS_EXPLOSION) {
                 for (let explosion of explosionInstance.explosions) {
                     this.app.stage.removeChild(explosion);
                 }
@@ -693,10 +718,10 @@ export class GameSessionManager {
         // check if a bomb should be placed
         if (this.bombPlaced) {
             // find the player's position (beware of negative scaling)
-            const {minX: player_x, minY: player_y} = this.screenContent.player.getBounds();
+            const {minX: playerX, minY: playerY} = this.screenContent.player.getBounds();
 
             // put the bomb in the cell the player is most in
-            const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(player_x, player_y, this.app.screen.width, this.app.screen.height);
+            const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(playerX, playerY, this.app.screen.width, this.app.screen.height);
             const { x, y } = this.screenContent.arena.gridToCanvas(cellX, cellY, this.app.screen.width, this.app.screen.height);
 
             // create a bomb sprite
@@ -718,7 +743,7 @@ export class GameSessionManager {
             const bombTimePlaced = this.stats.time - bomb.time;
 
             // texture swapping
-            const bombChangeTexture = Math.round(bombTimePlaced / TIME_CHANGE_MS_BOMB_TEXTURE) % 2;
+            const bombChangeTexture = Math.round(bombTimePlaced / DURATION_MS_BOMB_TEXTURE_CHANGE) % 2;
             const bombTextures = [this.textures.bomb, this.textures.bomb_ignited];
             bomb.bomb.texture = bombTextures[bombChangeTexture];
 
@@ -784,7 +809,7 @@ export class GameSessionManager {
      * The exit door is spawned when all enemies are defeated and all breakable walls are destroyed.
      * The exit door is removed when enemies are present or breakable walls are present.
      */
-    #updateExitDoor() {
+    #updateExitDoorLogic() {
         // door available
         if (this.screenContent.enemies.length === 0 && this.screenContent.breakableWalls.length === 0) {
             // if door not already spawned, spawn it (keep player on top)
@@ -849,6 +874,10 @@ export class GameSessionManager {
         this.app.stage.addChild(this.screenContent.pauseSign);
     }
 
+    /**
+     * Draws the info screen on the screen.
+     * @param {String} text - The text to display.
+     */
     #drawInfoScreen(text) {
         const { width: windowWidth, height: windowHeight } = this.app.screen;
         
@@ -865,6 +894,9 @@ export class GameSessionManager {
         this.screenContent.infoScreenElems = [background, infoScreenText];
     }
 
+    /**
+     * Redraws the info screen on the screen.
+     */
     #redrawInfoScreen() {
         const { width: windowWidth, height: windowHeight } = this.app.screen;
         // change background width and height
@@ -899,8 +931,8 @@ export class GameSessionManager {
             this.stats.time = this.stats.time + delta.elapsedMS;
 
             this.#updateStats();
-            // this.#handleLeaveGame();
             this.#updatePlayerMovement(delta);
+            this.#updateEnemySprites(delta);
             // this.#updateEnemyMovement(delta);
             this.#updateBombs();
             this.#hitcheckEntities();
@@ -908,7 +940,7 @@ export class GameSessionManager {
                 return;
             }
             this.#updateExplosions();
-            this.#updateExitDoor();
+            this.#updateExitDoorLogic();
             // this.#handleLevelEnd();
             // this.#handleGameEnd();
         }
@@ -969,6 +1001,10 @@ export class GameSessionManager {
         this.playerHitScreenInfo.playerHitBlinkTime += delta.elapsedMS;
     }
 
+    /**
+     * Handles updating the game session when it is in the level info screen.
+     * @param {Object} delta - The delta object for time-based updates.
+     */
     #handleGameSessionLevelInfoScreen(delta) {
         // if not already initialized
         if (!this.levelChangeInfo) {
@@ -1016,6 +1052,9 @@ export class GameSessionManager {
         }
     }
 
+    /**
+     * Handles updating the game session when the leave prompt is shown.
+     */
     #handleGameSessionLeavePromptUpdate() {
         if (this.playerMoving) {
             this.screenContent.player.texture = this.textures.player;
@@ -1046,6 +1085,7 @@ export class GameSessionManager {
             this.ended = true;
             this.leave = null;
         }
+        // TODO
     }
 
     /**
@@ -1078,6 +1118,9 @@ export class GameSessionManager {
             this.#redrawEntity(breakableWall);
         }
         this.#drawStats();
+        for (let enemy of this.screenContent.enemies) {
+            this.#redrawEntity(enemy.elem, SCALE_ENEMY_TO_WALL);
+        }
         this.#redrawEntity(this.screenContent.player, SCALE_PLAYER_TO_WALL);
         for (let bomb of this.screenContent.bombs) {
             this.#redrawEntity(bomb.bomb, SCALE_BOMB_TO_WALL);
@@ -1179,7 +1222,7 @@ export class GameSessionManager {
         }
         
         for (let enemy of this.screenContent.enemies) {
-            this.app.stage.removeChild(enemy);
+            this.app.stage.removeChild(enemy.elem);
         }
 
         if (this.screenContent.player) {
@@ -1396,5 +1439,234 @@ class Arena {
         this.wallHeight = null;
         this.wallsElements = null;
         this.freeSpaceElements = null;
+    }
+}
+
+class Enemy {
+    DIFFICULTY_EASY = 0;
+    DIFFICULTY_MEDIUM = 1;
+    DIFFICULTY_HARD = 2;
+    #PROBABILITIES = {
+        [this.DIFFICULTY_EASY]: { bfs: 30, dfs: 30, targetPlayer: 40 },
+        [this.DIFFICULTY_MEDIUM]: { bfs: 50, dfs: 50, targetPlayer: 65 },
+        [this.DIFFICULTY_HARD]: { bfs: 70, dfs: 30, targetPlayer: 90 }
+    };
+    #NO_ANCESTOR = -1;
+
+    constructor(graphicElem, difficulty = this.DIFFICULTY_MEDIUM) {
+        this._elem = graphicElem;
+        this.difficulty = difficulty;
+        this._remainingPath = [];
+    }
+
+    #getGraphIndex(i, j, colsCount) {
+        return i * colsCount + j;
+    }
+
+    #getGridIndices(a, colsCount) {
+        return { i: Math.floor(a / colsCount), j: a % colsCount };
+    }
+
+    #createOccupiedGrid(screenWidth, screenHeight, arena, breakableWalls, bombs) {
+        // grid with walls, breakable walls and bombs (true if free, false if occupied)
+        const occupiedGrid = [];
+        for (let i = 0; i < arena.rowsCount; i++) {
+            let row = [];
+            for (let j = 0; j < arena.colsCount; j++) {
+                let occupied = false;
+                if (arena.grid[i][j].type === GRID_CELL_TYPE.WALL) {
+                    occupied = true;
+                }
+                for (let breakableWall of breakableWalls) {
+                    const { x, y } = arena.canvasToGrid(breakableWall.x, breakableWall.y, screenWidth, screenHeight);
+                    if (x === j && y === i) {
+                        occupied = true;
+                        break;
+                    }
+                }
+                for (let bomb of bombs) {
+                    const { x, y } = arena.canvasToGrid(bomb.x, bomb.y, screenWidth, screenHeight);
+                    if (x === j && y === i) {
+                        occupied = true;
+                        break;
+                    }
+                }
+                row.push(occupied);
+            }
+            occupiedGrid.push(row);
+        }
+
+        return occupiedGrid;
+    }
+
+    #createGraph(occupiedGrid, arena) {
+        const graph = [];
+        
+        // initialize graph
+        for (let i = 0; i < arena.rowsCount * arena.colsCount; i++) {
+            graph.push([]);
+        }
+
+        // create graph
+        for (let i = 0; i < arena.rowsCount; i++) {
+            for (let j = 0; j < arena.colsCount; j++) {
+                if (occupiedGrid[i][j]) {
+                    continue;
+                }
+                let index = this.#getGraphIndex(i, j, arena.colsCount);
+                // upper neighbour
+                if (i > 0 && !occupiedGrid[i - 1][j]) {
+                    graph[index].push(this.#getGraphIndex(i - 1, j, arena.colsCount));
+                }
+                // lower neighbour
+                if (i < arena.rowsCount - 1 && !occupiedGrid[i + 1][j]) {
+                    graph[index].push(this.#getGraphIndex(i + 1, j, arena.colsCount));
+                }
+                // left neighbour
+                if (j > 0 && !occupiedGrid[i][j - 1]) {
+                    graph[index].push(this.#getGraphIndex(i, j - 1, arena.colsCount));
+                }
+                // right neighbour
+                if (j < arena.colsCount - 1 && !occupiedGrid[i][j + 1]) {
+                    graph[index].push(this.#getGraphIndex(i, j + 1, arena.colsCount));
+                }
+            }
+        }
+        
+        return graph;
+    }
+
+    #getRandomEmptySpace(occupiedGrid) {
+        let i = Math.floor(Math.random() * occupiedGrid.length);
+        let j = Math.floor(Math.random() * occupiedGrid[0].length);
+        while (occupiedGrid[i][j]) {
+            i = Math.floor(Math.random() * occupiedGrid.length);
+            j = Math.floor(Math.random() * occupiedGrid[0].length);
+        }
+        return { targetX: j, targetY: i };
+    }
+
+    calculatePath(playerX, playerY, screenWidth, screenHeight, arena, breakableWalls, bombs) {
+        const { bfs, dfs, targetPlayer } = this.#PROBABILITIES[this.difficulty];
+        const grid = this.#createOccupiedGrid(screenWidth, screenHeight, arena, breakableWalls, bombs);
+        const graph = this.#createGraph(grid, arena);
+
+        const choice = Math.random() * 100;
+
+        const { targetX, targetY } = choice < targetPlayer ? this.#getRandomEmptySpace(grid) : { targetX: playerX, targetY: playerY };
+
+        if (choice < bfs) {
+            this._remainingPath = this.#bfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight);
+        } else {
+            this._remainingPath = this.#dfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight);
+        }
+
+        return this.remainingPath;
+    }
+
+    nodeReached() {
+        if (this.remainingPath.length > 0) {
+            this.remainingPath.shift();
+        }
+    }
+
+    #getGridIndicesPath(graphPath, colsCount) {
+        const gridIndicesPath = [];
+        for (let node of graphPath) {
+            const { i, j } = this.#getGridIndices(node, colsCount);
+            gridIndicesPath.push({ i: i, j: j });
+        }
+        return gridIndicesPath;
+    }
+
+    #bfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight) {
+        const queue = [];
+        const enqued = new Set();
+        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, screenWidth, screenHeight);
+        const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, arena.colsCount);
+
+        const prev = Array(graph.length).fill(this.#NO_ANCESTOR);
+        queue.push(startNodeGraphIndex);
+        enqued.add(startNodeGraphIndex);
+    
+        while (queue.length > 0) {
+            const node = queue.shift();
+
+            // check if target reached and return path
+            if (node === this.#getGraphIndex(targetY, targetX, arena.colsCount)) {
+                const graphPath = [];
+                let currentNode = node;
+                while (prev[currentNode] !== this.#NO_ANCESTOR) {
+                    graphPath.push(currentNode);
+                    currentNode = prev[currentNode];
+                }
+                graphPath.push(startNodeGraphIndex);
+                graphPath.reverse();
+                
+                // convert graph path to grid indices path
+                return this.#getGridIndicesPath(graphPath, arena.colsCount);
+            }
+
+            for (let neighbour of graph[node]) {
+                if (!enqued.has(neighbour)) {
+                    queue.push(neighbour);
+                    enqued.add(neighbour);
+                    prev[neighbour] = node;
+                }
+            }   
+        }
+        
+        // no path found
+        return [];
+    }
+    
+    #dfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight) {
+        const stack = [];
+        const stacked = new Set();
+        
+        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, screenWidth, screenHeight);
+        const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, this.arena.colsCount);
+
+        const prev = Array(graph.length).fill(this.#NO_ANCESTOR);
+        stack.push(startNodeGraphIndex);
+        stacked.add(startNodeGraphIndex);
+
+        while (stack.length > 0) {
+            const node = stack.pop();
+
+            // check if target reached and return path
+            if (node === this.#getGraphIndex(targetY, targetX, arena.colsCount)) {
+                const graphPath = [];
+                let currentNode = node;
+                while (prev[currentNode] !== this.#NO_ANCESTOR) {
+                    graphPath.push(currentNode);
+                    currentNode = prev[currentNode];
+                }
+                graphPath.push(startNodeGraphIndex);
+                graphPath.reverse();
+                
+                // convert graph path to grid indices path
+                return this.#getGridIndicesPath(graphPath, arena.colsCount);
+            }
+            
+            // add neighbours to stack (random order)
+            for (let neighbour of graph[node].sort(() => Math.random() - 0.5)) {
+                if (!stacked.has(neighbour)) {
+                    stack.push(neighbour);
+                    stacked.add(neighbour);
+                    prev[neighbour] = node;
+                }
+            }
+        }
+
+        return []; // return path as indices of the grid
+    }
+
+    get elem() {
+        return this._elem;
+    }
+
+    get remainingPath() {
+        return this.remainingPath;
     }
 }
