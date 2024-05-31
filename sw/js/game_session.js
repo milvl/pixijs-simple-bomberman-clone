@@ -1,6 +1,7 @@
-import { HEX_COLOR_CODES } from "./color_codes.js";
+import { HEX_COLOR_CODES } from "./constants/color_codes.js";
 import { GameSessionState } from "./game_session_states.js";
 import { LEVELS } from "./levels_config.js";
+import { Arena } from "./graphic_elements/arena.js";
 // import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
@@ -48,10 +49,6 @@ const DURATION_MS_LEVEL_CHANGE = 5000; // 5 seconds
 
 const WALL_SCORE_VALUE = 10;
 
-const GRID_CELL_TYPE = {
-    WALL: 1,
-    EMPTY: 0,
-};
 const LEVELS_COUNT = 10;
 
 /**
@@ -476,7 +473,7 @@ export class GameSessionManager {
             // breakable walls
             for (let wall of levelConfig.breakableWalls) {
                 const { gridX, gridY } = wall;
-                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, this.app.screen.width, this.app.screen.height);
+                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
                 let breakableWall = new PIXI.Sprite(this.textures.break_wall);
                 this.#spawnEntity(breakableWall, x, y);
                 this.screenContent.breakableWalls.push(breakableWall);
@@ -485,7 +482,7 @@ export class GameSessionManager {
             // enemies
             for (let enemy of levelConfig.enemies) {
                 const { gridX, gridY } = enemy;
-                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, this.app.screen.width, this.app.screen.height);
+                const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
                 let enemySprite = new PIXI.Sprite(this.textures.ghost01);
                 this.#spawnEntity(enemySprite, x, y, SCALE_ENEMY_TO_WALL);
                 const enemyObj = new Enemy(enemySprite, enemy.difficulty);
@@ -494,7 +491,7 @@ export class GameSessionManager {
             
             // player
             const { gridX, gridY } = levelConfig.player;
-            const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, this.app.screen.width, this.app.screen.height);
+            const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
             this.screenContent.player = new PIXI.Sprite(this.textures.player);
             this.#spawnEntity(this.screenContent.player, x, y, SCALE_PLAYER_TO_WALL);
         }
@@ -512,7 +509,7 @@ export class GameSessionManager {
     #updateEntityPosition(entity, deltaX, deltaY) {
         // TODO NOTE: handled separately to allow sliding along objects
         let {horizontal: willCollideHorizontalBomb, vertical: willCollideVerticalBomb} = this.#checkEntitiesCollision(entity, deltaX, deltaY, this.screenContent.bombs.map(bomb => bomb.bomb));
-        let {horizontal: willCollideHorizontalWall, vertical: willCollideVerticalWall} = this.screenContent.arena.checkWallCollision(entity, deltaX, deltaY);
+        let {horizontal: willCollideHorizontalWall, vertical: willCollideVerticalWall} = this.screenContent.arena.checkWallCollision(entity, deltaX, deltaY, checkCollision);
         let {horizontal: willCollideHorizontalBreakableWall, vertical: willCollideVerticalBreakableWall} = this.#checkEntitiesCollision(entity, deltaX, deltaY, this.screenContent.breakableWalls);
 
         if (!willCollideHorizontalBomb && !willCollideHorizontalWall && !willCollideHorizontalBreakableWall) {
@@ -641,14 +638,14 @@ export class GameSessionManager {
         // create explosion sprites (now with graphics
         // center
         let explosion = new PIXI.Sprite(this.textures.explosion);
-        let { x: x_center, y: y_center } = this.screenContent.arena.gridToCanvas(centerX, centerY, this.app.screen.width, this.app.screen.height);
+        let { x: x_center, y: y_center } = this.screenContent.arena.gridToCanvas(centerX, centerY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         this.#spawnEntity(explosion, x_center, y_center);
         explosionInstance.explosions.push(explosion);
         // all directions
         for (let dir of spread) {
-            if (this.screenContent.arena.grid[dir.y][dir.x].type === GRID_CELL_TYPE.EMPTY) {
+            if (this.screenContent.arena.grid[dir.y][dir.x].type === this.screenContent.arena.GRID_CELL_TYPE.EMPTY) {
                 explosion = new PIXI.Sprite(this.textures.explosion);
-                let { x, y } = this.screenContent.arena.gridToCanvas(dir.x, dir.y, this.app.screen.width, this.app.screen.height);
+                let { x, y } = this.screenContent.arena.gridToCanvas(dir.x, dir.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
                 this.#spawnEntity(explosion, x, y, SCALE_EXPLOSION_TO_WALL);
                 explosionInstance.explosions.push(explosion);
             }
@@ -721,8 +718,8 @@ export class GameSessionManager {
             const {minX: playerX, minY: playerY} = this.screenContent.player.getBounds();
 
             // put the bomb in the cell the player is most in
-            const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(playerX, playerY, this.app.screen.width, this.app.screen.height);
-            const { x, y } = this.screenContent.arena.gridToCanvas(cellX, cellY, this.app.screen.width, this.app.screen.height);
+            const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(playerX, playerY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
+            const { x, y } = this.screenContent.arena.gridToCanvas(cellX, cellY, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
 
             // create a bomb sprite
             let bomb = new PIXI.Sprite(this.textures.bomb);
@@ -818,8 +815,8 @@ export class GameSessionManager {
                 // put to center of the arena
                 const { x, y } = this.screenContent.arena.gridToCanvas(Math.floor(this.screenContent.arena.colsCount / 2), 
                                                                        Math.floor(this.screenContent.arena.rowsCount / 2),
-                                                                       this.app.screen.width, 
-                                                                       this.app.screen.height);
+                                                                       SCALE_WIDTH_ARENA_TO_SCREEN, 
+                                                                       SCALE_HEIGHT_ARENA_TO_SCREEN);
                 this.#spawnEntity(this.screenContent.exitDoor, x, y);
                 // keep player on top
                 this.app.stage.removeChild(this.screenContent.player);
@@ -1098,7 +1095,7 @@ export class GameSessionManager {
         this.#prepareLevelsConfig();
         console.log(MODULE_NAME_PREFIX, 'Levels config:', this.levelsConfig);
 
-        this.screenContent.arena.draw();
+        this.screenContent.arena.draw(SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         this.#drawStats();
         // DEBUG add player sprite (now using bunny sprite)
         this.#prepareEntities();
@@ -1113,7 +1110,7 @@ export class GameSessionManager {
     redraw() {
         this.basisChange = true;
         
-        this.screenContent.arena.redraw();
+        this.screenContent.arena.redraw(SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         for (let breakableWall of this.screenContent.breakableWalls) {
             this.#redrawEntity(breakableWall);
         }
@@ -1240,207 +1237,7 @@ export class GameSessionManager {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-/**
- * Represents a game session.
- */
-class Arena {
-    /**
-     * Creates a new arena with walls and empty spaces.
-     * @param {PIXI.Application} app - The PIXI application.
-     * @param {Object} textures - The textures object.
-     * @param {Number} rowsCount - The number of rows in the arena.
-     * @param {Number} colsCount - The number of columns in the arena.
-     */
-    constructor(app, textures, rowsCount, colsCount) {
-        this.app = app;
-        this.textures = textures;
-        this.rowsCount = rowsCount;
-        this.colsCount = colsCount;
-        this.grid = this.#createGrid(rowsCount, colsCount);
-        this.wallWidth = null;
-        this.wallHeight = null;
-        this.wallsElements = [];
-        this.freeSpaceElements = [];
-    }
 
-    /**
-     * Creates a grid with walls and empty spaces.
-     * @param {Number} rowsCount - The number of rows in the grid.
-     * @param {Number} colsCount - The number of columns in the grid.
-     * @returns {Array} The grid.
-    */
-    #createGrid(rowsCount, colsCount) {
-        const grid = [];
-        for (let rowIndex = 0; rowIndex < rowsCount; rowIndex++) {
-            const row = [];
-            for (let colIndex = 0; colIndex < colsCount; colIndex++) {
-                if (rowIndex === 0 || rowIndex === (rowsCount - 1) || colIndex === 0 || colIndex === (colsCount - 1)) {
-                    row.push({type: GRID_CELL_TYPE.WALL, elem: null}); // outer walls
-                } else if ((rowIndex % 2) === 0 && (colIndex % 2) === 0) {
-                    row.push({type: GRID_CELL_TYPE.WALL, elem: null}); // inner walls
-                } else {
-                    row.push({type: GRID_CELL_TYPE.EMPTY, elem: null}); // empty space
-                }
-            }
-            grid.push(row);
-        }
-        return grid;
-    }
-
-    /**
-     * Converts grid coordinates to canvas coordinates.
-     * @param {Number} gridX - The x-coordinate on the grid.
-     * @param {Number} gridY - The y-coordinate on the grid.
-     * @param {Number} screenWidth - The width of the screen.
-     * @param {Number} screenHeight - The height of the screen.
-     * @returns {Object} The canvas coordinates.
-     */
-    gridToCanvas(gridX, gridY, screenWidth, screenHeight) {
-        let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
-        let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
-        let canvasX = gridX * cellWidth;
-        let y_offset = (screenHeight - (cellHeight * this.rowsCount));
-        let canvasY = y_offset + (gridY * cellHeight);
-        return { x: canvasX, y: canvasY, cellWidth: cellWidth, cellHeight: cellHeight };
-    }
-
-    /**
-     * Converts canvas coordinates to grid coordinates.
-     * @param {Number} canvasX - The x-coordinate on the canvas.
-     * @param {Number} canvasY - The y-coordinate on the canvas.
-     * @param {Number} screenWidth - The width of the screen.
-     * @param {Number} screenHeight - The height of the screen.
-     * @returns {Object} The grid coordinates.
-     */
-    canvasToGrid(canvasX, canvasY, screenWidth, screenHeight) {
-        let cellWidth = screenWidth * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
-        let cellHeight = screenHeight * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
-        let gridX = Math.round(canvasX / cellWidth);
-        let y_offset = (screenHeight - (cellHeight * this.rowsCount));
-        let gridY = Math.round((canvasY - y_offset) / cellHeight);
-        return { x: gridX, y: gridY };
-    }
-
-    /**
-      * Checks if an element will collide with a wall 
-      * based on its velocity and position.
-      * Information returned in separate horizontal and vertical flags 
-      * to allow sliding along walls.
-      * @param {PIXI.Sprite} elem - The element to check for collision.
-      * @param {Number} [deltaX=0] - The change in x-coordinate.
-      * @param {Number} [deltaY=0] - The change in y-coordinate.
-      * @returns {Object} An object with the horizontal and vertical collision flags.
-      */
-    checkWallCollision(elem, deltaX = 0, deltaY = 0) {
-        let willCollideHorizontal = false;
-        let willCollideVertical = false;
-        const elemBounds = elem.getBounds();
-        for (let row_index = 0; row_index < this.rowsCount; row_index++) {
-            for (let col_index = 0; col_index < this.colsCount; col_index++) {
-                if (this.grid[row_index][col_index].type !== GRID_CELL_TYPE.WALL) {
-                    continue;
-                }
-                const wall = this.grid[row_index][col_index].elem;
-                const wallBounds = wall.getBounds();
-
-                if (!willCollideHorizontal) {
-                    willCollideHorizontal = checkCollision(elemBounds.minX, elemBounds.minY, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, deltaX);
-                }
-                if (!willCollideVertical) {
-                    willCollideVertical = checkCollision(elemBounds.minX, elemBounds.minY, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, 0, deltaY);
-                }
-                // if (checkCollision(elemBounds.x, elemBounds.y, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, deltaX, deltaY)) {
-                //     return true;
-                // }
-            }
-        }
-        return {horizontal: willCollideHorizontal, vertical: willCollideVertical};
-    }
-
-    /**
-     * Returns random empty space coordinates.
-     * @returns {Object} The random empty space coordinates.
-     */
-    randomEmptySpace() {
-        let rowIndex = Math.floor(Math.random() * this.rowsCount);
-        let colIndex = Math.floor(Math.random() * this.colsCount);
-        while (this.grid[rowIndex][colIndex].type === GRID_CELL_TYPE.WALL) {
-            rowIndex = Math.floor(Math.random() * this.rowsCount);
-            colIndex = Math.floor(Math.random() * this.colsCount);
-        }
-        
-        const x_coord = this.gridToCanvas(colIndex, rowIndex, this.app.screen.width, this.app.screen.height).x;
-        const y_coord = this.gridToCanvas(colIndex, rowIndex, this.app.screen.width, this.app.screen.height).y;
-        return { x: x_coord, y: y_coord };
-    }
-
-    /**
-     * Draws the arena on the screen.
-     */
-    draw() {
-        this.wallWidth = this.app.screen.width * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
-        this.wallHeight = this.app.screen.height * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
-
-        const { width, height } = this.app.screen;
-        for (let rowIndex = 0; rowIndex < this.rowsCount; rowIndex++) {
-            for (let colIndex = 0; colIndex < this.colsCount; colIndex++) {
-                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(colIndex, rowIndex, width, height);
-                if (this.grid[rowIndex][colIndex].type === GRID_CELL_TYPE.WALL) {
-                    let elem = new PIXI.Sprite(this.textures.wall);
-                    elem.width = cellWidth;
-                    elem.height = cellHeight;
-                    elem.x = x;
-                    elem.y = y;
-                    this.grid[rowIndex][colIndex].elem = elem;
-                    app.stage.addChild(elem);
-                } else {
-                    let elem = new PIXI.Graphics();
-                    elem.rect(x, y, cellWidth, cellHeight);
-                    elem.fill(HEX_COLOR_CODES.BLACK);
-                    this.grid[rowIndex][colIndex].elem = elem;
-                    app.stage.addChild(elem);
-                }
-            }
-        }
-    }
-
-    /**
-     * Redraws the arena on the screen.
-     * Used when the screen is resized.
-     */
-    redraw() {
-        this.wallWidth = this.app.screen.width * SCALE_WIDTH_ARENA_TO_SCREEN / this.colsCount;
-        this.wallHeight = this.app.screen.height * SCALE_HEIGHT_ARENA_TO_SCREEN / this.rowsCount;
-
-        const { width, height } = this.app.screen;
-        for (let row_index = 0; row_index < this.rowsCount; row_index++) {
-            for (let col_index = 0; col_index < this.colsCount; col_index++) {
-                const { x, y, cellWidth, cellHeight } = this.gridToCanvas(col_index, row_index, width, height);
-                const elem = this.grid[row_index][col_index].elem;
-                elem.width = cellWidth;
-                elem.height = cellHeight;
-                elem.x = x;
-                elem.y = y;
-            }
-        }
-    }
-
-    /**
-     * Cleans up the arena.
-     */
-    cleanUp() {
-        for (let row of this.grid) {
-            for (let cell of row) {
-                this.app.stage.removeChild(cell.elem);
-            }
-        }
-        this.grid = null;
-        this.wallWidth = null;
-        this.wallHeight = null;
-        this.wallsElements = null;
-        this.freeSpaceElements = null;
-    }
-}
 
 class Enemy {
     DIFFICULTY_EASY = 0;
@@ -1474,18 +1271,18 @@ class Enemy {
             let row = [];
             for (let j = 0; j < arena.colsCount; j++) {
                 let occupied = false;
-                if (arena.grid[i][j].type === GRID_CELL_TYPE.WALL) {
+                if (arena.grid[i][j].type === arena.GRID_CELL_TYPE.WALL) {
                     occupied = true;
                 }
                 for (let breakableWall of breakableWalls) {
-                    const { x, y } = arena.canvasToGrid(breakableWall.x, breakableWall.y, screenWidth, screenHeight);
+                    const { x, y } = arena.canvasToGrid(breakableWall.x, breakableWall.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
                     if (x === j && y === i) {
                         occupied = true;
                         break;
                     }
                 }
                 for (let bomb of bombs) {
-                    const { x, y } = arena.canvasToGrid(bomb.x, bomb.y, screenWidth, screenHeight);
+                    const { x, y } = arena.canvasToGrid(bomb.x, bomb.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
                     if (x === j && y === i) {
                         occupied = true;
                         break;
@@ -1582,7 +1379,7 @@ class Enemy {
     #bfsPath(targetX, targetY, graph, arena, screenWidth, screenHeight) {
         const queue = [];
         const enqued = new Set();
-        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, screenWidth, screenHeight);
+        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, arena.colsCount);
 
         const prev = Array(graph.length).fill(this.#NO_ANCESTOR);
@@ -1624,7 +1421,7 @@ class Enemy {
         const stack = [];
         const stacked = new Set();
         
-        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, screenWidth, screenHeight);
+        const startPosition = arena.canvasToGrid(this.elem.x, this.elem.y, SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, this.arena.colsCount);
 
         const prev = Array(graph.length).fill(this.#NO_ANCESTOR);

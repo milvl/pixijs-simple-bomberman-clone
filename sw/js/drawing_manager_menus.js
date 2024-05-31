@@ -1,4 +1,4 @@
-import { HEX_COLOR_CODES } from "./color_codes.js";
+import { HEX_COLOR_CODES } from "./constants/color_codes.js";
 
 const MODULE_NAME_PREFIX = 'drawing_manager_menus.js - ';
 
