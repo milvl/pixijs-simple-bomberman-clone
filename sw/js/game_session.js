@@ -131,6 +131,7 @@ export class GameSessionManager {
         // variables for screen resizing
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
+        this.prevScreenSize = {width: this.prevWidth, height: this.prevHeight};
         this.basisChange = false;
 
         // game stats
@@ -485,7 +486,7 @@ export class GameSessionManager {
                 const { gridX, gridY } = enemy;
                 const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
                 let enemySprite = new PIXI.Sprite(this.textures.ghost01);
-                const enemyObj = new Enemy(this.app, this.screenContent.arena, enemySprite, SCALE_ENEMY_TO_WALL, enemy.difficulty);
+                const enemyObj = new Enemy(this.app, this.screenContent.arena, enemySprite, SCALE_ENEMY_TO_WALL, this.enemySprites, enemy.difficulty);
                 enemyObj.spawn(x, y);
                 this.screenContent.enemies.push(enemyObj);
             }
@@ -519,24 +520,31 @@ export class GameSessionManager {
         if (!willCollideVerticalBomb && !willCollideVerticalWall && !willCollideVerticalBreakableWall) {
             entity.y += deltaY;
         }
-
-        // TODO hit check
     }
 
     /**
      * Updates the enemy sprites.
      * @param {Object} delta - The delta object.
      */
-    #updateEnemySprites(delta) {
-        if (this.enemiesSpriteTimer > DURATION_MS_MOVEMENT_SPRITE_CHANGE) {
-            for (let enemy of this.screenContent.enemies) {
-                const enemySprite = enemy.elem;
-                this.currentEnemySpriteIndex = (this.currentEnemySpriteIndex + 1) % this.enemySprites.length;
-                enemySprite.texture = this.enemySprites[this.currentEnemySpriteIndex];
-            }
-            this.enemiesSpriteTimer -= DURATION_MS_MOVEMENT_SPRITE_CHANGE;
+    #updateEnemies(delta) {
+        // if (this.enemiesSpriteTimer > DURATION_MS_MOVEMENT_SPRITE_CHANGE) {
+        //     for (let enemy of this.screenContent.enemies) {
+        //         const enemySprite = enemy.elem;
+        //         this.currentEnemySpriteIndex = (this.currentEnemySpriteIndex + 1) % this.enemySprites.length;
+        //         enemySprite.texture = this.enemySprites[this.currentEnemySpriteIndex];
+        //     }
+        //     this.enemiesSpriteTimer -= DURATION_MS_MOVEMENT_SPRITE_CHANGE;
+        // }
+        // this.enemiesSpriteTimer += delta.elapsedMS;
+        const updateData = {
+            deltaX: 0,
+            deltaY: 0,
+            deltaTimeMS: delta.elapsedMS,
         }
-        this.enemiesSpriteTimer += delta.elapsedMS;
+        for (let enemy of this.screenContent.enemies) {
+            enemy.update(updateData);
+        }
+        // TODO HERE
     }
 
     /**
@@ -759,6 +767,27 @@ export class GameSessionManager {
         }
     }
 
+    #playerGotHitState() {
+        return this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT;
+    }
+
+    /**
+     * Updates the game entities.
+     * @param {Object} delta - The delta object.
+     */
+    #updateEntities(delta) {
+        this.#updatePlayerMovement(delta);
+        this.#updateEnemies(delta);
+        // TODO this.#updateEnemyMovement(delta);
+        this.#updateBombs();
+        this.#hitcheckEntities();
+        if (this.#playerGotHitState()) {
+            return;
+        }
+        this.#updateExplosions();
+        this.#updateExitDoorLogic();
+    }
+
     /**
      * Hit checks the entities on the screen and 
      * handles the consequences of the hits.
@@ -927,16 +956,8 @@ export class GameSessionManager {
             this.stats.time = this.stats.time + delta.elapsedMS;
 
             this.#updateStats();
-            this.#updatePlayerMovement(delta);
-            this.#updateEnemySprites(delta);
-            // this.#updateEnemyMovement(delta);
-            this.#updateBombs();
-            this.#hitcheckEntities();
-            if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS) {
-                return;
-            }
-            this.#updateExplosions();
-            this.#updateExitDoorLogic();
+            this.#updateEntities(delta);
+
             // this.#handleLevelEnd();
             // this.#handleGameEnd();
         }
@@ -1115,7 +1136,7 @@ export class GameSessionManager {
         }
         this.#drawStats();
         for (let enemy of this.screenContent.enemies) {
-            this.#redrawEntity(enemy.elem, SCALE_ENEMY_TO_WALL);
+            enemy.redraw(this.prevScreenSize);
         }
         this.#redrawEntity(this.screenContent.player, SCALE_PLAYER_TO_WALL);
         for (let bomb of this.screenContent.bombs) {
@@ -1140,6 +1161,7 @@ export class GameSessionManager {
 
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
+        this.prevScreenSize = {width: this.app.screen.width, height: this.app.screen.height};
         this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
         this.basisChange = false;
     }

@@ -1,5 +1,7 @@
 import { Entity } from './entity.js';
 
+//TODO movement
+
 /**
  * Represents an enemy in the arena.
  * @extends Entity
@@ -14,6 +16,7 @@ export class Enemy extends Entity {
         [this.DIFFICULTY_HARD]: { bfs: 70, dfs: 30, targetPlayer: 90 }
     };
     #NO_ANCESTOR = -1;
+    #DURATION_MS_SPRITE_CHANGE = 150; // 0.15 seconds
 
     /**
      * Represents an enemy in the arena.
@@ -23,10 +26,36 @@ export class Enemy extends Entity {
      * @param scaleToWall {number} - The scale factor to apply to the enemy.
      * @param [difficulty=this.DIFFICULTY_MEDIUM] {number} - The difficulty of the enemy.
      */
-    constructor(app, arena, graphicElem, scaleToWall, difficulty = this.DIFFICULTY_MEDIUM) {
+    constructor(app, arena, graphicElem, scaleToWall, animationSprites, difficulty = Enemy.DIFFICULTY_MEDIUM) {
         super(app, arena, graphicElem, scaleToWall);
         this.difficulty = difficulty;
         this._remainingPath = [];
+        this.spriteChangeTime = 0;
+        this.animationSprites = animationSprites;
+        this.currentSpriteIndex = 0;
+    }
+
+    update(updateData) {
+        const { deltaTimeMS: deltaTimeMS } = updateData;
+        this.spriteChangeTime += deltaTimeMS;
+        if (this.spriteChangeTime >= this.#DURATION_MS_SPRITE_CHANGE) {
+            this.currentSpriteIndex = (this.currentSpriteIndex + 1) % this.animationSprites.length;
+            this.elem.texture = this.animationSprites[this.currentSpriteIndex];
+            this.spriteChangeTime -= this.#DURATION_MS_SPRITE_CHANGE;
+        }
+
+        // change direction if needed
+        const { deltaX: deltaX } = updateData;
+        if (deltaX < 0 && this.elem.scale.x > 0) {
+            this.elem.scale.x *= -1;
+            this.elem.x += this.elem.width;
+        }
+        if (deltaX > 0 && this.elem.scale.x < 0) {
+            this.elem.scale.x *= -1;
+            this.elem.x -= this.elem.width;
+        }
+
+        super.update(updateData);
     }
 
     /**
