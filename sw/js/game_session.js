@@ -456,7 +456,7 @@ export class GameSessionManager {
         this.screenContent.explosions = [];
 
         for (let enemy of this.screenContent.enemies) {
-            this.app.stage.removeChild(enemy.elem);
+            enemy.remove();
         }
         this.screenContent.enemies = [];
 
@@ -485,8 +485,8 @@ export class GameSessionManager {
                 const { gridX, gridY } = enemy;
                 const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
                 let enemySprite = new PIXI.Sprite(this.textures.ghost01);
-                this.#spawnEntity(enemySprite, x, y, SCALE_ENEMY_TO_WALL);
-                const enemyObj = new Enemy(this.app, this.screenContent.arena, enemySprite, enemy.difficulty);
+                const enemyObj = new Enemy(this.app, this.screenContent.arena, enemySprite, SCALE_ENEMY_TO_WALL, enemy.difficulty);
+                enemyObj.spawn(x, y);
                 this.screenContent.enemies.push(enemyObj);
             }
             

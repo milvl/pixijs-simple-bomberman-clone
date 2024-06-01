@@ -1,4 +1,10 @@
-export class Enemy {
+import { Entity } from './entity.js';
+
+/**
+ * Represents an enemy in the arena.
+ * @extends Entity
+ */
+export class Enemy extends Entity {
     DIFFICULTY_EASY = 0;
     DIFFICULTY_MEDIUM = 1;
     DIFFICULTY_HARD = 2;
@@ -9,10 +15,16 @@ export class Enemy {
     };
     #NO_ANCESTOR = -1;
 
-    constructor(app, arena, graphicElem, difficulty = this.DIFFICULTY_MEDIUM) {
-        this.app = app;
-        this.arena = arena;
-        this._elem = graphicElem;
+    /**
+     * Represents an enemy in the arena.
+     * @param app {PIXI.Application} - The PIXI application.
+     * @param arena {Arena} - The arena where the enemy will be spawned.
+     * @param graphicElem {PIXI.Sprite} - The graphic element that represents the enemy.
+     * @param scaleToWall {number} - The scale factor to apply to the enemy.
+     * @param [difficulty=this.DIFFICULTY_MEDIUM] {number} - The difficulty of the enemy.
+     */
+    constructor(app, arena, graphicElem, scaleToWall, difficulty = this.DIFFICULTY_MEDIUM) {
+        super(app, arena, graphicElem, scaleToWall);
         this.difficulty = difficulty;
         this._remainingPath = [];
     }
