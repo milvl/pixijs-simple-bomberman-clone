@@ -4,7 +4,7 @@ export const GAME_STATES = {
     NONE: -1,
     MAIN_MENU: 0,
     GAME_SESSION: 1,
-    // GAME_END: 2,
+    GAME_END: 2,
     SETTINGS: 3,
     LEADERBOARDS: 4
 };
@@ -79,9 +79,9 @@ export class GameState {
             case GAME_STATES.GAME_SESSION:
                 currentState = GAME_STATES_MAP.GAME_SESSION;
                 break;
-            // case GAME_STATES.GAME_END:
-            //     currentState = GAME_STATES_MAP.GAME_END;
-            //     break;
+            case GAME_STATES.GAME_END:
+                currentState = GAME_STATES_MAP.GAME_END;
+                break;
             case GAME_STATES.SETTINGS:
                 currentState = GAME_STATES_MAP.SETTINGS;
                 break;
@@ -126,13 +126,13 @@ export class GameState {
                 console.log(MODULE_NAME_PREFIX + "Game state set to GAME_SESSION");
                 break;
             
-            // case GAME_STATES.GAME_END:
-            //     if (this._state !== GAME_STATES.GAME_SESSION) {
-            //         throw new Error("Logic Error: Cannot set game state to GAME_END from " + this._state);
-            //     }
-            //     this._state = GAME_STATES.GAME_END;
-            //     console.log(MODULE_NAME_PREFIX + "Game state set to GAME_END");
-            //     break;
+            case GAME_STATES.GAME_END:
+                if (this._state !== GAME_STATES.GAME_SESSION) {
+                    throw new Error("Logic Error: Cannot set game state to GAME_END from " + this._state);
+                }
+                this._state = GAME_STATES.GAME_END;
+                console.log(MODULE_NAME_PREFIX + "Game state set to GAME_END");
+                break;
             
             case GAME_STATES.SETTINGS:
                 if (this._state !== GAME_STATES.MAIN_MENU) {

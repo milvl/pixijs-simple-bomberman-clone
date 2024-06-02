@@ -5,6 +5,15 @@ const DIFFICULTY = {
 };
 
 export const LEVELS = [
+    // // mock level
+    // {
+    //     breakableWalls: [
+    //     ],
+    //     enemies: [
+    //     ],
+    //     player: {gridX: 1, gridY: 1},
+    // },
+
     // Level 1
     {
         breakableWalls: [

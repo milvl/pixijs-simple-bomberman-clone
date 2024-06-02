@@ -175,7 +175,7 @@ export class GameSessionManager {
         // this.playerMoving = false;
         // this.playerMovingTime = 0;
         this.livesLeftScreenInfo = null;
-        this.leave = null;
+        this.userLeave = null;
     }
 
     #prepareLevelsConfig() {
@@ -189,76 +189,145 @@ export class GameSessionManager {
     /**
      * Sets up the key inputs for the game session.
      */
-    #setUpKeyInputs() {
-        // arrow keys for movement are handled on each frame update (to combat desync)
+    #setUpKeyInputs(state) {
+        // player movement is handled on each frame update (to combat desync)
 
+        // spacebar for bomb
         const spaceFunc = () => {
-            if (this.started && this.screenContent.bombs.length < 1) {
+            if (this.started 
+                && this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS
+                && this.screenContent.bombs.length < 1) 
+            {
                 this.bombToBePlaced = true;
             }
         }
 
-        const enterFunc = () => {
-            if (this.started) {
-                this.leave = true;
-                console.log(MODULE_NAME_PREFIX, 'Leaving game session');
-            }
+        // keys for pausing the game
+        const pauseFunc = () => {
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
+            this.#setUpKeyInputs(this.gameSessionState.state);
         }
 
-        const escFunc = () => {
-            if (this.started) {
-                if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.keyInputs.space.press = null;
-                    this.keyInputs.pause.press = null;
-                    this.keyInputs.enter.press = enterFunc;
-                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT);
-                    return;
-                }
-                if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
-                    this.keyInputs.enter.press = null;
+        const unpauseFunc = () => {
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+            this.#setUpKeyInputs(this.gameSessionState.state);
+            this.#handleGameSessionPausedUpdate(true);
+        }
+
+        // keys for leaving the game session
+        const bringUpLeavePromptFunc = () => {
+            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT);
+            this.#setUpKeyInputs(this.gameSessionState.state);
+        }
+
+        const backToGameFunc = () => {
+            this.userLeave = false;
+        }
+
+        const leaveFunc = () => {
+            this.userLeave = true;
+        }
+
+        if (this.started) {
+            this.#cleanUpKeyInputs();
+            switch (state) {
+                case this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS:
                     this.keyInputs.space.press = spaceFunc;
                     this.keyInputs.pause.press = pauseFunc;
-
-                    this.leave = false;
-                }
+                    this.keyInputs.esc.press = bringUpLeavePromptFunc;
+                    break;
+                
+                case this.gameSessionState.GAME_SESSION_STATE_PAUSED:
+                this.keyInputs.pause.press = unpauseFunc;
+                break;
+                
+                case this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT:
+                this.keyInputs.enter.press = leaveFunc;
+                this.keyInputs.esc.press = backToGameFunc;
+                break;
+                
+                case this.gameSessionState.GAME_SESSION_STATE_GAME_END:
+                case this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT:
+                case this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN:
+                    // no key inputs
+                    break;
+                
+                default:
+                    throw new Error(`${MODULE_NAME_PREFIX}Invalid game session state: ${state}`);
             }
         }
+        // // arrow keys for movement are handled on each frame update (to combat desync)
 
-        const pauseFunc = () => {
-            if (this.started) {
-                if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
-                    this.keyInputs.space.press = null;
-                    this.keyInputs.esc.press = null;
-                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
-                }
-                else {
-                    this.keyInputs.space.press = spaceFunc;
-                    this.keyInputs.esc.press = escFunc;
-                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
-                    this.#handleGameSessionPausedUpdate(true);
-                }
-            }
-        }
+        // const spaceFunc = () => {
+        //     if (this.started && this.screenContent.bombs.length < 1) {
+        //         this.bombToBePlaced = true;
+        //     }
+        // }
+
+        // const enterFunc = () => {
+        //     if (this.started) {
+        //         this.leave = true;
+        //         console.log(MODULE_NAME_PREFIX, 'Leaving game session');
+        //     }
+        // }
+
+        // const escFunc = () => {
+        //     if (this.started) {
+        //         if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS) {
+        //             this.keyInputs.space.press = null;
+        //             this.keyInputs.pause.press = null;
+        //             this.keyInputs.enter.press = enterFunc;
+        //             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT);
+        //             return;
+        //         }
+        //         if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
+        //             this.keyInputs.enter.press = null;
+        //             this.keyInputs.space.press = spaceFunc;
+        //             this.keyInputs.pause.press = pauseFunc;
+
+        //             this.leave = false;
+        //         }
+        //     }
+        // }
+
+        // const pauseFunc = () => {
+        //     if (this.started) {
+        //         if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
+        //             this.keyInputs.space.press = null;
+        //             this.keyInputs.esc.press = null;
+        //             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
+        //         }
+        //         else {
+        //             this.keyInputs.space.press = spaceFunc;
+        //             this.keyInputs.esc.press = escFunc;
+        //             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+        //             this.#handleGameSessionPausedUpdate(true);
+        //         }
+        //     }
+        // }
         
-        // spacebar for bomb
-        this.keyInputs.space.press = spaceFunc;
+        // // spacebar for bomb
+        // this.keyInputs.space.press = spaceFunc;
 
-        // esc for returning to main menu (with prompt)
-        this.keyInputs.esc.press = escFunc;
+        // // esc for returning to main menu (with prompt)
+        // this.keyInputs.esc.press = escFunc;
 
-        // p for pausing the game
-        this.keyInputs.pause.press = pauseFunc;
+        // // p for pausing the game
+        // this.keyInputs.pause.press = pauseFunc;
     }
 
     /**
      * Cleans up the key inputs for the game session.
-     * This is called when the game session is stopped.
      */
     #cleanUpKeyInputs() {
         this.keyInputs.space.press = null;
         this.keyInputs.esc.press = null;
         this.keyInputs.pause.press = null;
         this.keyInputs.enter.press = null;
+        this.keyInputs.up.press = null;
+        this.keyInputs.down.press = null;
+        this.keyInputs.left.press = null;
+        this.keyInputs.right.press = null;
     }
 
     /**
@@ -507,16 +576,6 @@ export class GameSessionManager {
         // this.#drawStats(); // to ensure the text is updated and scaled properly (can be overlayed because hud is always at the top of the screen)
     }
 
-    #playerHit() {
-        // TODO enemies hit check
-        // explosion hit check
-        // for (let explosion of this.screenContent.explosions) {
-        //     for (let explosion of explosion.explosions) {
-        //         explosion.hitCheck(this.screenContent.player);
-        //     }
-        // }
-    }
-
     /**
      * Updates the player movement based on key inputs.
      * @param {Object} delta - The delta object.
@@ -725,6 +784,11 @@ export class GameSessionManager {
                 // player entered door
                 // remove the config from the list
                 this.levelsConfig.splice(this.level - 1, 1);
+                if (this.levelsConfig.length === 0) {
+                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
+                    this.#cleanUpKeyInputs();
+                    return;
+                }
                 this.level += 1;
                 this.#cleanUpKeyInputs();
                 this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN);
@@ -837,18 +901,11 @@ export class GameSessionManager {
 
         // process entity updates when the screen is not being resized
         if (!this.basisChange) {
-            // check if player finished last level
-            if (!this.endless && this.levelsConfig.length === 0) {
-                // TODO game over
-            }
-
             this.stats.time = this.stats.time + delta.elapsedMS;
 
             this.#updateStats();
             scoreUpdate = this.#updateEntities(delta);
             this.#updateScore(scoreUpdate);
-            // this.#handleLevelEnd();
-            // this.#handleGameEnd();
         }
     }
 
@@ -890,11 +947,14 @@ export class GameSessionManager {
             this.playerHitScreenInfo = null;
             this.stats.lives -= 1;
             if (this.stats.lives <= 0) {
-                // TODO game over
+                this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
+                return;
             }
-            // reset timers
-            this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN);
-            return;
+            else {
+                // reset timers
+                this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN);
+                return;
+            }
         }
 
         // update timers each update
@@ -926,9 +986,9 @@ export class GameSessionManager {
             }
             this.screenContent.infoScreenElems = [];
 
-            this.#setUpKeyInputs();
             this.#prepareEntities();
             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+            this.#setUpKeyInputs(this.gameSessionState.state);
             return;
         }
 
@@ -957,43 +1017,47 @@ export class GameSessionManager {
      * Handles updating the game session when the leave prompt is shown.
      */
     #handleGameSessionLeavePromptUpdate() {
-        if (this.playerMoving) {
-            this.screenContent.player.texture = this.textures.player;
-            this.playerMoving = false;
-        }
-
         if (this.screenContent.infoScreenElems.length === 0) {
             const leavePromptText = 'Are you sure you want to leave?\n\nPress ENTER to leave the game.\nPress ESC to return to the game.';
             this.#drawInfoScreen(leavePromptText);
         }
 
-        if (this.leave === true) {
+        if (this.userLeave === true) {
             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
+            this.#cleanUpKeyInputs();
+            // dont set up key inputs here, because the game session will be cleaned up
         }
-        if (this.leave === false) {
+        if (this.userLeave === false) {
             for (let elem of this.screenContent.infoScreenElems) {
                 this.app.stage.removeChild(elem);
             }
             this.screenContent.infoScreenElems = [];
-            this.leave = null;
+            this.userLeave = null;
             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
+            this.#setUpKeyInputs(this.gameSessionState.state);
         }
     }
 
+    /**
+     * Handles updating the game session when the game ends.
+     * this.ended and this.userLeave are read by higher module (game.js)
+     * to determine how the game session ended.
+     */
     #handleGameSessionGameEndUpdate() {
-        // left on user choice
-        if (this.leave && this.leave === true) {
-            this.ended = true;
-            this.leave = null;
+        // left by player defeat or levels completed
+        if (!this.userLeave) {
+            this.userLeave = false;
         }
-        // TODO
+
+        // otherwise left on user choice        
+
+        this.ended = true;
     }
 
     /**
      * Starts the game session.
      */
     start() {
-        this.#setUpKeyInputs();
         this.gameSessionState = new GameSessionState();
 
         this.#prepareLevelsConfig();
@@ -1001,11 +1065,10 @@ export class GameSessionManager {
 
         this.screenContent.arena.draw(SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         this.#drawStats();
-        // DEBUG add player sprite (now using bunny sprite)
         this.#prepareEntities();
 
         this.started = true;
-        // TODO: add player and enemies
+        this.#setUpKeyInputs(this.gameSessionState.state);
     }
 
     /**
@@ -1036,7 +1099,7 @@ export class GameSessionManager {
         }
         if (this.screenContent.exitDoor) {
             this.#redrawEntity(this.screenContent.exitDoor);
-        } //TODO
+        }
 
         if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN
             || this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
@@ -1110,17 +1173,15 @@ export class GameSessionManager {
         }
         
         for (let breakableWall of this.screenContent.breakableWalls) {
-            this.app.stage.removeChild(breakableWall);
+            breakableWall.remove();
         }
         
         for (let bomb of this.screenContent.bombs) {
             bomb.remove();
         }
         
-        for (let explosionInstance of this.screenContent.explosions) {
-            for (let explosion of explosionInstance.explosions) {
-                this.app.stage.removeChild(explosion);
-            }
+        for (let explosion of this.screenContent.explosions) {
+            explosion.remove();
         }
         
         for (let enemy of this.screenContent.enemies) {

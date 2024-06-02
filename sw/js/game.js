@@ -44,6 +44,21 @@ const DEFAULT_SETTINGS_CONTENT = {
     submited: null,
 };
 
+const DEFAULT_GAME_END_CONTENT = {
+    updated: true,
+    title: 'Enter your name:',
+    options: [
+        { letter: 'A', index: 0 },
+        { letter: 'A', index: 0 },
+        { letter: 'A', index: 0 },
+    ],
+    infoTip: 'User arrow keys to select letters and press enter to submit.',
+    selected: 0,
+    submited: null,
+};
+
+const AVAILIBLE_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
 /**
  * Returns the modulo of two numbers.
  * @param {Number} n - The dividend.
@@ -79,6 +94,7 @@ export class Game {
         this.settings = { ...DEFAULT_SETTINGS};
         this.gameState = new GameState(this.window);
         this.screenContent = null;
+        this.recievedStats = null;
         this.drawingManager = null;
         this.screenWidth = this.app.screen.width;
         this.screenHeight = this.app.screen.height;
@@ -113,6 +129,8 @@ export class Game {
         this.keyInputs.up.press = undefined;
         this.keyInputs.down.press = undefined;
         this.keyInputs.enter.press = undefined;
+        this.keyInputs.left.press = undefined;
+        this.keyInputs.right.press = undefined;
     }
 
     /**
@@ -217,11 +235,27 @@ export class Game {
         }
         if (this.drawingManager.ended === true) {
             this.drawingManager.cleanUp();
-            this.drawingManager = null;
-            if (this.screenContent.nullable && this.screenContent.nullable === true) {
-                this.screenContent = null;
+            let stats = this.drawingManager.stats;
+
+            // user left the game
+            if (this.drawingManager.userLeave === true) {
+                this.drawingManager = null;
+                if (this.screenContent.nullable === true) {
+                    this.screenContent = null;
+                }
+
+                this.gameState.switchState(GAME_STATES.MAIN_MENU);
             }
-            this.gameState.switchState(GAME_STATES.MAIN_MENU);
+            // game ended with a win
+            else {
+                this.drawingManager = null;
+                if (this.screenContent.nullable === true) {
+                    this.screenContent = null;
+                }
+
+                this.recievedStats = stats;
+                this.gameState.switchState(GAME_STATES.GAME_END);
+            }
         }
         else {
             this.drawingManager.update(delta);
@@ -316,6 +350,63 @@ export class Game {
         }
     }
 
+    #setupGameEndKeys() {
+        this.keyInputs.up.press = () => {
+            if (!this.keyInputs.down.isDown) {
+                this.screenContent.options[this.screenContent.selected].index = mod(this.screenContent.options[this.screenContent.selected].index + 1, AVAILIBLE_CHARSET.length);
+                this.screenContent.options[this.screenContent.selected].letter = AVAILIBLE_CHARSET[this.screenContent.options[this.screenContent.selected].index];
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+        this.keyInputs.down.press = () => {
+            if (!this.keyInputs.up.isDown) {
+                this.screenContent.options[this.screenContent.selected].index = mod(this.screenContent.options[this.screenContent.selected].index - 1, AVAILIBLE_CHARSET.length);
+                this.screenContent.options[this.screenContent.selected].letter = AVAILIBLE_CHARSET[this.screenContent.options[this.screenContent.selected].index];
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+        this.keyInputs.left.press = () => {
+            this.screenContent.selected = mod(this.screenContent.selected - 1, this.screenContent.options.length);
+            this.soundManager.playCursor();
+            this.screenContent.updated = true;
+        }
+        this.keyInputs.right.press = () => {
+            this.screenContent.selected = mod(this.screenContent.selected + 1, this.screenContent.options.length);
+            this.soundManager.playCursor();
+            this.screenContent.updated = true;
+        }
+        this.keyInputs.enter.press = () => {
+            let name = '';
+            for (let i = 0; i < this.screenContent.options.length; i++) {
+                name += this.screenContent.options[i].letter;
+            }
+            this.screenContent.submited = name;
+            console.log(MODULE_NAME_PREFIX, 'Submited name:', this.screenContent.submited);
+            this.submitScore = true; // TODO: implement score submission
+            this.#cleanUpMenu();
+            this.gameState.switchState(GAME_STATES.MAIN_MENU);
+        }
+       
+    }
+
+    #handleGameEndScreen() {
+        if (this.screenContent === null) {
+            this.screenContent = { ...DEFAULT_GAME_END_CONTENT };
+            this.#setupGameEndKeys();
+        }
+
+        if (this.screenContent.updated) {
+            // this.drawingManager.redraw();
+            console.log(MODULE_NAME_PREFIX, 'Selected index:', this.screenContent.selected);
+            this.screenContent.options.forEach((option, index) => {
+                console.log(MODULE_NAME_PREFIX, `Option ${index}: ${option.letter}`);
+            });
+            this.screenContent.updated = false;
+        }
+    }
+
     /**
      * Handles updating the game.
      */
@@ -338,6 +429,9 @@ export class Game {
             case GAME_STATES.LEADERBOARDS:
                 console.error(MODULE_NAME_PREFIX, 'Leaderboards to be implemented.');
                 throw new Error('Leaderboards to be implemented.');
+            case GAME_STATES.GAME_END:
+                this.#handleGameEndScreen();
+                break;
             default:
                 console.error(MODULE_NAME_PREFIX, 'Invalid game state.');
                 break;

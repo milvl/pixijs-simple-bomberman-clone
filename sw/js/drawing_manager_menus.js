@@ -97,7 +97,6 @@ export class MainMenuDrawingManager {
 
     /**
      * Draws the background of the main menu.
-     * // TODO - add background image
      */
     #drawBackground() {
         const background = new PIXI.Graphics();
@@ -255,7 +254,6 @@ export class SettingsDrawingManager {
 
     /**
      * Draws the background of the settings.
-     * // TODO - add background image
      */
     #drawBackground() {
         const background = new PIXI.Graphics();

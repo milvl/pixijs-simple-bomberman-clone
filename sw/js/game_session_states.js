@@ -38,7 +38,7 @@ export class GameSessionState {
                 break;
 
             case this.GAME_SESSION_STATE_PLAYER_HIT:
-                if (newState === this.GAME_SESSION_STATE_LEVEL_INFO_SCREEN) {
+                if (newState === this.GAME_SESSION_STATE_LEVEL_INFO_SCREEN || newState === this.GAME_SESSION_STATE_GAME_END) {
                     this.gameState = newState;
                     console.log(`${MODULE_NAME_PREFIX}Switched to ${this.getStateName(this.state)}`);
                 }
