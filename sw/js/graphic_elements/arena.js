@@ -119,6 +119,9 @@ export class Arena {
                 if (!willCollideVertical) {
                     willCollideVertical = checkCollisionFn(elemBounds.minX, elemBounds.minY, elemBounds.width, elemBounds.height, wallBounds.x, wallBounds.y, wallBounds.width, wallBounds.height, 0, deltaY);
                 }
+                if (willCollideHorizontal && willCollideVertical) {
+                    break;
+                }
             }
         }
         return {horizontal: willCollideHorizontal, vertical: willCollideVertical};

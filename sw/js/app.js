@@ -270,6 +270,19 @@ const windowChange = {
 export const app = new PIXI.Application();  // TODO remove export (debugging)
 await app.init(PIXI_INIT_CONFIG);
 
+// mouse click debug
+// app.view.addEventListener('click', (event) => {
+//     // Get the bounding rectangle of the canvas
+//     const rect = app.view.getBoundingClientRect();
+
+//     // Calculate the mouse position relative to the canvas
+//     const x = event.clientX - rect.left;
+//     const y = event.clientY - rect.top;
+
+//     // Log the coordinates
+//     console.log(`Mouse click at canvas coords: (${x}, ${y})`);
+// });
+
 // add the canvas to "game" div
 $("#game").append(app.canvas);
 

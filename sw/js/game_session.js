@@ -1,8 +1,13 @@
 import { HEX_COLOR_CODES } from "./constants/color_codes.js";
 import { GameSessionState } from "./game_session_states.js";
 import { LEVELS } from "./levels_config.js";
+import { DURATIONS } from "./constants/durations.js";
 import { Arena } from "./graphic_elements/arena.js";
 import { Enemy } from "./graphic_elements/enemy.js";
+import { Player } from "./graphic_elements/player.js";
+import { Bomb } from "./graphic_elements/bomb.js";
+import { Explosion } from "./graphic_elements/explosion.js";
+import { BreakableWall } from "./graphic_elements/breakable_wall.js";
 // import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
@@ -39,18 +44,10 @@ const INDEX_SCREEN_CONTENT_INFO_SCREEN_TEXT = 1;
 
 const MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT = 0.11;
 
-const DURATION_MS_BOMB = 3000; // 3 seconds
-const DURATION_MS_BOMB_TEXTURE_CHANGE = 500; // 0.5 seconds
-const DURATION_MS_EXPLOSION = 500; // 0.5 second
 const EASTER_EGG_TIME = 359990000; // 59 minutes 59 seconds
-const DURATION_MS_MOVEMENT_SPRITE_CHANGE = 250; // 0.25 seconds
-const DURATION_MS_PLAYER_HIT = 3000; // 3 seconds
-const DURATION_MS_PLAYER_HIT_BLINK = 100; // 0.1 seconds
-const DURATION_MS_LEVEL_CHANGE = 5000; // 5 seconds
 
 const WALL_SCORE_VALUE = 10;
-
-const LEVELS_COUNT = 10;
+const ENEMY_SCORE_VALUE = 100;
 
 /**
  * Parses milliseconds into a time string.
@@ -156,10 +153,9 @@ export class GameSessionManager {
         this.screenContent.nullable = false;        // flag for higher up module to nullify this object
 
         // other game session variables
-        this.playerMovementSprites = [this.textures.player_walk01, /*this.textures.player_walk02,*/ this.textures.player_walk03];
-        this.enemySprites = [this.textures.ghost01, this.textures.ghost02, this.textures.ghost03, this.textures.ghost04, this.textures.ghost05, this.textures.ghost06];
-        this.currentPlayerMovementSpriteIndex = 0;
-        this.currentEnemySpriteIndex = 0;
+        this.playerMovementTextures = [this.textures.player_walk01, /*this.textures.player_walk02,*/ this.textures.player_walk03];
+        this.enemyTextures = [this.textures.ghost01, this.textures.ghost02, this.textures.ghost03, this.textures.ghost04, this.textures.ghost05, this.textures.ghost06];
+        this.bombTextures = [this.textures.bomb_ignited, this.textures.bomb];
         this.playerHitScreenInfo = null;
         this.levelChangeInfo = null;
         this.enemiesSpriteTimer = null;
@@ -175,9 +171,9 @@ export class GameSessionManager {
         // flags
         this.started = false;
         this.ended = false;
-        this.bombPlaced = false;
-        this.playerMoving = false;
-        this.playerMovingTime = 0;
+        this.bombToBePlaced = false;
+        // this.playerMoving = false;
+        // this.playerMovingTime = 0;
         this.livesLeftScreenInfo = null;
         this.leave = null;
     }
@@ -195,17 +191,10 @@ export class GameSessionManager {
      */
     #setUpKeyInputs() {
         // arrow keys for movement are handled on each frame update (to combat desync)
-        // but arrow keys will have functions assigned to change flags for movement
-
-        const arrowUpFunc = () => {
-            this.playerMoving = false;
-            this.playerMovingTime = 0;
-        }
-
 
         const spaceFunc = () => {
             if (this.started && this.screenContent.bombs.length < 1) {
-                this.bombPlaced = true;
+                this.bombToBePlaced = true;
             }
         }
 
@@ -219,8 +208,6 @@ export class GameSessionManager {
         const escFunc = () => {
             if (this.started) {
                 if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS) {
-                    this.keyInputs.left.release = null;
-                    this.keyInputs.right.release = null;
                     this.keyInputs.space.press = null;
                     this.keyInputs.pause.press = null;
                     this.keyInputs.enter.press = enterFunc;
@@ -229,8 +216,6 @@ export class GameSessionManager {
                 }
                 if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
                     this.keyInputs.enter.press = null;
-                    this.keyInputs.left.release = arrowUpFunc;
-                    this.keyInputs.right.release = arrowUpFunc;
                     this.keyInputs.space.press = spaceFunc;
                     this.keyInputs.pause.press = pauseFunc;
 
@@ -242,15 +227,11 @@ export class GameSessionManager {
         const pauseFunc = () => {
             if (this.started) {
                 if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
-                    this.keyInputs.left.release = null;
-                    this.keyInputs.right.release = null;
                     this.keyInputs.space.press = null;
                     this.keyInputs.esc.press = null;
                     this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
                 }
                 else {
-                    this.keyInputs.left.release = arrowUpFunc;
-                    this.keyInputs.right.release = arrowUpFunc;
                     this.keyInputs.space.press = spaceFunc;
                     this.keyInputs.esc.press = escFunc;
                     this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
@@ -258,12 +239,6 @@ export class GameSessionManager {
                 }
             }
         }
-
-        // arrow keys for movement
-        this.keyInputs.left.release = arrowUpFunc;
-        this.keyInputs.right.release = arrowUpFunc;
-        this.keyInputs.up.release = arrowUpFunc;
-        this.keyInputs.down.release = arrowUpFunc;
         
         // spacebar for bomb
         this.keyInputs.space.press = spaceFunc;
@@ -280,21 +255,10 @@ export class GameSessionManager {
      * This is called when the game session is stopped.
      */
     #cleanUpKeyInputs() {
-        this.keyInputs.left.press = null;
-        this.keyInputs.left.release = null;
-        this.keyInputs.right.press = null;
-        this.keyInputs.right.release = null;
-        this.keyInputs.up.press = null;
-        this.keyInputs.up.release = null;
-        this.keyInputs.down.press = null;
-        this.keyInputs.down.release = null;
         this.keyInputs.space.press = null;
         this.keyInputs.esc.press = null;
         this.keyInputs.pause.press = null;
         this.keyInputs.enter.press = null;
-
-        // force player to stop moving
-        this.playerMoving = false;
     }
 
     /**
@@ -443,16 +407,14 @@ export class GameSessionManager {
     #prepareEntities() {
         // clear any existing entities
         if (this.screenContent.player) {
-            this.app.stage.removeChild(this.screenContent.player);
+            this.screenContent.player.remove();
         }
         for (let bomb of this.screenContent.bombs) {
-            this.app.stage.removeChild(bomb.bomb);
+            bomb.remove();
         }
         this.screenContent.bombs = [];
-        for (let explosion_instance of this.screenContent.explosions) {
-            for (let explosion of explosion_instance.explosions) {
-                this.app.stage.removeChild(explosion);
-            }
+        for (let explosionObject of this.screenContent.explosions) {
+            explosionObject.remove();
         }
         this.screenContent.explosions = [];
 
@@ -462,7 +424,7 @@ export class GameSessionManager {
         this.screenContent.enemies = [];
 
         for (let wall of this.screenContent.breakableWalls) {
-            this.app.stage.removeChild(wall);
+            wall.remove();
         }
         this.screenContent.breakableWalls = [];
 
@@ -476,8 +438,8 @@ export class GameSessionManager {
             for (let wall of levelConfig.breakableWalls) {
                 const { gridX, gridY } = wall;
                 const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
-                let breakableWall = new PIXI.Sprite(this.textures.break_wall);
-                this.#spawnEntity(breakableWall, x, y);
+                let breakableWall = new BreakableWall(this.app, this.screenContent.arena, this.textures.break_wall);
+                breakableWall.spawn(x, y);
                 this.screenContent.breakableWalls.push(breakableWall);
             }
 
@@ -485,8 +447,7 @@ export class GameSessionManager {
             for (let enemy of levelConfig.enemies) {
                 const { gridX, gridY } = enemy;
                 const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
-                let enemySprite = new PIXI.Sprite(this.textures.ghost01);
-                const enemyObj = new Enemy(this.app, this.screenContent.arena, enemySprite, SCALE_ENEMY_TO_WALL, this.enemySprites, enemy.difficulty);
+                const enemyObj = new Enemy(this.app, this.screenContent.arena, this.textures.ghost01, SCALE_ENEMY_TO_WALL, this.enemyTextures, enemy.difficulty);
                 enemyObj.spawn(x, y);
                 this.screenContent.enemies.push(enemyObj);
             }
@@ -494,8 +455,8 @@ export class GameSessionManager {
             // player
             const { gridX, gridY } = levelConfig.player;
             const { x, y } = this.screenContent.arena.gridToCanvas(gridX, gridY);
-            this.screenContent.player = new PIXI.Sprite(this.textures.player);
-            this.#spawnEntity(this.screenContent.player, x, y, SCALE_PLAYER_TO_WALL);
+            this.screenContent.player = new Player(this.app, this.screenContent.arena, this.textures.player, SCALE_PLAYER_TO_WALL, this.playerMovementTextures);
+            this.screenContent.player.spawn(x, y);
         }
         else {
             // TODO randomize (endless mode)
@@ -503,48 +464,37 @@ export class GameSessionManager {
     }
 
     /**
-     * Updates the entity.
-     * @param {PIXI.Sprite} entity - The entity to update.
-     * @param {Number} deltaX - The change in x-coordinate.
-     * @param {Number} deltaY - The change in y-coordinate. 
-     */
-    #updateEntityPosition(entity, deltaX, deltaY) {
-        // TODO NOTE: handled separately to allow sliding along objects
-        let {horizontal: willCollideHorizontalBomb, vertical: willCollideVerticalBomb} = this.#checkEntitiesCollision(entity, deltaX, deltaY, this.screenContent.bombs.map(bomb => bomb.bomb));
-        let {horizontal: willCollideHorizontalWall, vertical: willCollideVerticalWall} = this.screenContent.arena.checkWallCollision(entity, deltaX, deltaY, checkCollision);
-        let {horizontal: willCollideHorizontalBreakableWall, vertical: willCollideVerticalBreakableWall} = this.#checkEntitiesCollision(entity, deltaX, deltaY, this.screenContent.breakableWalls);
-
-        if (!willCollideHorizontalBomb && !willCollideHorizontalWall && !willCollideHorizontalBreakableWall) {
-            entity.x += deltaX;
-        }
-        if (!willCollideVerticalBomb && !willCollideVerticalWall && !willCollideVerticalBreakableWall) {
-            entity.y += deltaY;
-        }
-    }
-
-    /**
      * Updates the enemy sprites.
      * @param {Object} delta - The delta object.
+     * @param {Array} obstacles - The obstacles to check against.
+     * @param {Array} bombs - The bombs to check against.
+     * @param {Array} entitiesToCheckHitBy - The explosion instances to check against.
+     * @returns {Object} The updated enemy data.
      */
-    #updateEnemies(delta) {
-        // if (this.enemiesSpriteTimer > DURATION_MS_MOVEMENT_SPRITE_CHANGE) {
-        //     for (let enemy of this.screenContent.enemies) {
-        //         const enemySprite = enemy.elem;
-        //         this.currentEnemySpriteIndex = (this.currentEnemySpriteIndex + 1) % this.enemySprites.length;
-        //         enemySprite.texture = this.enemySprites[this.currentEnemySpriteIndex];
-        //     }
-        //     this.enemiesSpriteTimer -= DURATION_MS_MOVEMENT_SPRITE_CHANGE;
-        // }
-        // this.enemiesSpriteTimer += delta.elapsedMS;
+    #updateEnemies(delta, obstacles, bombs, entitiesToCheckHitBy) {
         const updateData = {
             deltaX: 0,
-            deltaY: 0,
+            deltaY: 0,  // TODO
             deltaTimeMS: delta.elapsedMS,
+            obstacles: obstacles,
+            bombs: bombs,
+            entitiesToCheckHitBy: entitiesToCheckHitBy,
         }
+
+        const toRemove = [];
         for (let enemy of this.screenContent.enemies) {
-            enemy.update(updateData);
+            const updateResponse = enemy.update(updateData);
+            if (updateResponse.hit) {
+                toRemove.push(enemy);
+            }
         }
-        // TODO HERE
+        // remove the enemies that are to be removed
+        for (let enemy of toRemove) {
+            enemy.remove();
+            this.screenContent.enemies.splice(this.screenContent.enemies.indexOf(enemy), 1);
+        }
+
+        return { enemiesHit: toRemove.length };
     }
 
     /**
@@ -560,204 +510,97 @@ export class GameSessionManager {
     #playerHit() {
         // TODO enemies hit check
         // explosion hit check
-        for (let explosionInstance of this.screenContent.explosions) {
-            for (let explosion of explosionInstance.explosions) {
-                const explosionBounds = explosion.getBounds();
-                const playerBounds = this.screenContent.player.getBounds();
-                if (checkCollision(explosionBounds.x, explosionBounds.y, explosionBounds.width, explosionBounds.height, playerBounds.x, playerBounds.y, playerBounds.width, playerBounds.height)) {
-                    return true;
-                }
-            }
-        }
+        // for (let explosion of this.screenContent.explosions) {
+        //     for (let explosion of explosion.explosions) {
+        //         explosion.hitCheck(this.screenContent.player);
+        //     }
+        // }
     }
 
     /**
      * Updates the player movement based on key inputs.
      * @param {Object} delta - The delta object.
+     * @param {Array} obstacles - The obstacles to check against.
+     * @param {Array} bombs - The bombs to check against.
+     * @param {Array} entitiesToCheckHitBy - The entities to hit check against.
+     * @returns {Boolean} True if the player got hit, false otherwise.
      */
-    #updatePlayerMovement(delta) {
-        const distance = this.movementSpeed * (delta.elapsedMS / 1000); // convert ms to seconds
-
-        let deltaX = 0;
-        let deltaY = 0;
-
-        if (this.keyInputs.left.isDown) {
-            deltaX -= distance;
-            if (this.screenContent.player.scale.x > 0) {
-                this.screenContent.player.scale.x *= -1;
-                this.screenContent.player.x += this.screenContent.player.width;
-            }
-            this.playerMoving = true;
-        }
-        if (this.keyInputs.right.isDown) {
-            deltaX += distance;
-            if (this.screenContent.player.scale.x < 0) {
-                this.screenContent.player.scale.x *= -1;
-                this.screenContent.player.x -= this.screenContent.player.width;
-            }
-            this.playerMoving = true;
-        }
-        if (this.keyInputs.up.isDown) {
-            deltaY -= distance;
-            this.playerMoving = true;
-        }
-        if (this.keyInputs.down.isDown) {
-            deltaY += distance;
-            this.playerMoving = true;
-        }
-
-        // texture swapping
-        if (this.playerMoving) {
-            this.playerMovingTime += delta.elapsedMS;
-
-            if (this.playerMovingTime > DURATION_MS_MOVEMENT_SPRITE_CHANGE) {
-                this.currentPlayerMovementSpriteIndex = (this.currentPlayerMovementSpriteIndex + 1) % this.playerMovementSprites.length;
-                this.screenContent.player.texture = this.playerMovementSprites[this.currentPlayerMovementSpriteIndex];
-                this.playerMovingTime -= DURATION_MS_MOVEMENT_SPRITE_CHANGE;
-            }
-        } else {
-            this.screenContent.player.texture = this.textures.player;
+    #updatePlayer(delta, obstacles, bombs, entitiesToCheckHitBy) {
+        const playerUpdateData = {
+            deltaTimeMS: delta.elapsedMS,
+            keyInputs: this.keyInputs,
+            obstacles: obstacles,
+            bombs: bombs,
+            entitiesToCheckHitBy: entitiesToCheckHitBy,
         }
         
-        this.#updateEntityPosition(this.screenContent.player, deltaX, deltaY);
+        const res = this.screenContent.player.update(playerUpdateData);
+        return res;
     }
 
-    /**
-     * Creates an explosion on the screen.
-     * @param {Number} cellX - The x-coordinate of the bomb.
-     * @param {Number} cellY - The y-coordinate of the bomb. 
-     */
-    #createExplosion(cellX, cellY) {
-        // sanity check
-        if (cellX <= 0 || cellX >= this.screenContent.arena.colsCount - 1 || cellY <= 0 || cellY >= this.screenContent.arena.rowsCount - 1) {
-            console.error(MODULE_NAME_PREFIX, 'Invalid bomb detonation coordinates:', cellX, cellY);
-            return;
+    #updateBreakableWalls(entitiesToCheckHitBy) {
+        const updateData = {
+            entitiesToCheckHitBy: entitiesToCheckHitBy,
         }
 
-        const explosionInstance = {explosions: [], time: null};
-
-        // explosion positions
-        const {centerX, centerY} = {centerX: cellX, centerY: cellY};
-        const {northX, northY} = {northX: cellX, northY: cellY - 1};
-        const {southX, southY} = {southX: cellX, southY: cellY + 1};
-        const {eastX, eastY} = {eastX: cellX + 1, eastY: cellY};
-        const {westX, westY} = {westX: cellX - 1, westY: cellY};
-        const spread = [{x: northX, y: northY}, {x: southX, y: southY}, {x: eastX, y: eastY}, {x: westX, y: westY}];
-
-        // create explosion sprites (now with graphics
-        // center
-        let explosion = new PIXI.Sprite(this.textures.explosion);
-        let { x: x_center, y: y_center } = this.screenContent.arena.gridToCanvas(centerX, centerY);
-        this.#spawnEntity(explosion, x_center, y_center);
-        explosionInstance.explosions.push(explosion);
-        // all directions
-        for (let dir of spread) {
-            if (this.screenContent.arena.grid[dir.y][dir.x].type === this.screenContent.arena.GRID_CELL_TYPE.EMPTY) {
-                explosion = new PIXI.Sprite(this.textures.explosion);
-                let { x, y } = this.screenContent.arena.gridToCanvas(dir.x, dir.y);
-                this.#spawnEntity(explosion, x, y, SCALE_EXPLOSION_TO_WALL);
-                explosionInstance.explosions.push(explosion);
-            }
-        }
-        explosionInstance.time = this.stats.time;
-        this.screenContent.explosions.push(explosionInstance);
-        this.soundManager.playExplosion();
-    }
-
-    /**
-     * Updates the explosions on the screen.
-     */
-    #updateExplosions() {
         const toRemove = [];
-        for (let explosionInstance of this.screenContent.explosions) {
-            const explosionTime = this.stats.time - explosionInstance.time;
-            if (explosionTime >= DURATION_MS_EXPLOSION) {
-                for (let explosion of explosionInstance.explosions) {
-                    this.app.stage.removeChild(explosion);
-                }
-                toRemove.push(explosionInstance);
+        for (let wall of this.screenContent.breakableWalls) {
+            const updateResponse = wall.update(updateData);
+            if (updateResponse.hit) {
+                toRemove.push(wall);
             }
         }
-        // remove the explosion objects that are to be removed
-        for (let explosionInstance of toRemove) {
-            this.screenContent.explosions.splice(this.screenContent.explosions.indexOf(explosionInstance), 1);
+
+        // remove the breakable walls that are to be removed
+        for (let wall of toRemove) {
+            wall.remove();
+            this.screenContent.breakableWalls.splice(this.screenContent.breakableWalls.indexOf(wall), 1);
         }
+
+        return { brokenWalls: toRemove.length };
     }
 
     /**
-     * Checks if the entity will collide with any entity from given array.
-     * Information returned in separate horizontal and vertical flags 
-     * to allow sliding along objects.
-     * @param {PIXI.Sprite} entity - The entity to check.
-     * @param {Number} deltaX - The change in x-coordinate.
-     * @param {Number} deltaY - The change in y-coordinate.
-     * @param {Array} entities - The entities to check against.
-     * @returns {Object} An object with the horizontal and vertical collision flags.
+     * Places a bomb on the screen.
+     * The bomb is placed where the player is most in.
      */
-    #checkEntitiesCollision(entity, deltaX, deltaY, entities) {
-        let willCollideHorizontal = false;
-        let willCollideVertical = false;
+    #placeBomb() {
+        // find the player's position (beware of negative scaling)
+        const {minX: playerX, minY: playerY} = this.screenContent.player.elem.getBounds();
 
-        const {minX, minY} = entity.getBounds();
+        // put the bomb in the cell the player is most in
+        const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(playerX, playerY);
+        const { x, y } = this.screenContent.arena.gridToCanvas(cellX, cellY);
 
-        for (let comparedEntity of entities) {
-            const comparedEntityBounds = comparedEntity.getBounds();
-            // if player is already colliding with bomb, let them leave
-            if (checkCollision(minX, minY, entity.width, entity.height, comparedEntityBounds.x, comparedEntityBounds.y, comparedEntityBounds.width, comparedEntityBounds.height)) {
-                return {willCollideHorizontal, willCollideVertical};
-            }
-            if (!willCollideHorizontal) {
-                willCollideHorizontal = checkCollision(minX, minY, entity.width, entity.height, comparedEntityBounds.x, comparedEntityBounds.y, comparedEntityBounds.width, comparedEntityBounds.height, deltaX);
-            }
-            if (!willCollideVertical) {
-                willCollideVertical = checkCollision(minX, minY, entity.width, entity.height, comparedEntityBounds.x, comparedEntityBounds.y, comparedEntityBounds.width, comparedEntityBounds.height, 0, deltaY);
-            }
-        }
-
-        return {horizontal: willCollideHorizontal, vertical: willCollideVertical};
+        const bombObject = new Bomb(this.app, this.screenContent.arena, this.textures.bomb, SCALE_BOMB_TO_WALL, this.bombTextures);
+        bombObject.spawn(x, y);
+        console.log(MODULE_NAME_PREFIX, `Bomb placed at [${x}, ${y}], grid: [${cellX}, ${cellY}]`);
+        
+        // add the bomb to the list of bombs
+        this.screenContent.bombs.push(bombObject);
     }
 
     /**
      * Updates the bombs on the screen.
+     * @param {Object} delta - The delta object.
      */
-    #updateBombs() {
+    #updateBombs(delta) {
         // check if a bomb should be placed
-        if (this.bombPlaced) {
-            // find the player's position (beware of negative scaling)
-            const {minX: playerX, minY: playerY} = this.screenContent.player.getBounds();
-
-            // put the bomb in the cell the player is most in
-            const { x: cellX, y: cellY } = this.screenContent.arena.canvasToGrid(playerX, playerY);
-            const { x, y } = this.screenContent.arena.gridToCanvas(cellX, cellY);
-
-            // create a bomb sprite
-            let bomb = new PIXI.Sprite(this.textures.bomb);
-            this.#spawnEntity(bomb, x, y, SCALE_BOMB_TO_WALL);
-            
-            // add the bomb to the list of bombs
-            const bomb_info = {bomb: bomb, time: this.stats.time, cellX: cellX, cellY: cellY}
-            this.screenContent.bombs.push(bomb_info);
-
-            this.bombPlaced = false;
-            console.log(MODULE_NAME_PREFIX, 'Bomb placed at:', x, y);
-            console.log(MODULE_NAME_PREFIX, 'Bomb: ', bomb_info);
+        if (this.bombToBePlaced) {
+            this.#placeBomb();
+            this.bombToBePlaced = false;
         }
 
         // update each bomb
         const toRemove = [];
         for (let bomb of this.screenContent.bombs) {
-            const bombTimePlaced = this.stats.time - bomb.time;
-
-            // texture swapping
-            const bombChangeTexture = Math.round(bombTimePlaced / DURATION_MS_BOMB_TEXTURE_CHANGE) % 2;
-            const bombTextures = [this.textures.bomb, this.textures.bomb_ignited];
-            bomb.bomb.texture = bombTextures[bombChangeTexture];
+            bomb.update({deltaTimeMS: delta.elapsedMS});
 
             // bomb is to be detonated
-            if (bombTimePlaced >= DURATION_MS_BOMB) {
-                this.app.stage.removeChild(bomb.bomb);
+            if (bomb.isExploding) {
+                bomb.remove();
 
-                this.#createExplosion(bomb.cellX, bomb.cellY);
+                this.#createExplosion(bomb.elem.x, bomb.elem.y);
                 toRemove.push(bomb);
             }
         }
@@ -767,68 +610,92 @@ export class GameSessionManager {
         }
     }
 
-    #playerGotHitState() {
-        return this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT;
+    /**
+     * Creates an explosion on the screen.
+     * @param {Number} x - The x-coordinate of the bomb.
+     * @param {Number} y - The y-coordinate of the bomb. 
+     */
+    #createExplosion(x, y) {
+        const { x: gridX, y: gridY } = this.screenContent.arena.canvasToGrid(x, y);
+        const explosion = new Explosion(this.app, this.screenContent.arena, this.textures.explosion, SCALE_EXPLOSION_TO_WALL);
+        explosion.spawn(gridX, gridY);
+        console.log(MODULE_NAME_PREFIX, `Explosion created at [${x}, ${y}], grid: [${gridX}, ${gridY}]`);
+        this.screenContent.explosions.push(explosion);
+        this.soundManager.playExplosion();
+    }
+
+    /**
+     * Updates the explosions on the screen.
+     * @param {Object} delta - The delta object.
+     */
+    #updateExplosions(delta) {
+        const toRemove = [];
+        for (let explosionObject of this.screenContent.explosions) {
+            if (explosionObject.isFinished) {
+                toRemove.push(explosionObject);
+            }
+        }
+        // remove the explosion objects that are to be removed
+        for (let explosionObject of toRemove) {
+            this.screenContent.explosions.splice(this.screenContent.explosions.indexOf(explosionObject), 1);
+        }
+
+        // update each explosion
+        for (let explosionObject of this.screenContent.explosions) {
+            explosionObject.update({deltaTimeMS: delta.elapsedMS});
+        }
+    }
+
+    /**
+     * Gets the obstacles on the screen.
+     * @returns {Array} The obstacles on the screen.
+     */
+    #getObstacles() {
+        const obstacles = [];  
+        this.screenContent.breakableWalls.forEach(wall => {
+            obstacles.push(wall);
+        });
+
+        return obstacles;
     }
 
     /**
      * Updates the game entities.
      * @param {Object} delta - The delta object.
+     * @returns {Object} The update response.
      */
     #updateEntities(delta) {
-        this.#updatePlayerMovement(delta);
-        this.#updateEnemies(delta);
-        // TODO this.#updateEnemyMovement(delta);
-        this.#updateBombs();
-        this.#hitcheckEntities();
-        if (this.#playerGotHitState()) {
-            return;
-        }
-        this.#updateExplosions();
-        this.#updateExitDoorLogic();
-    }
+        let updateResponse = {};
+        const obstacles = this.#getObstacles();
+        const bombs = this.screenContent.bombs;
+        const explosionInstances = this.screenContent.explosions.map(explosion => explosion.explosionInstances).flat();
+        const enemies = this.screenContent.enemies;
+        let enemiesHit = 0;
+        let brokenWalls = 0;
 
-    /**
-     * Hit checks the entities on the screen and 
-     * handles the consequences of the hits.
-     * // TODO not complete
-     */
-    #hitcheckEntities() {
-        if (this.#playerHit()) {
-            this.soundManager.playPlayerHit();
+        // uodate player
+        updateResponse = this.#updatePlayer(delta, obstacles, bombs, [...enemies, ...explosionInstances]);
+        if (updateResponse.hit) {
             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT);
+            this.soundManager.playPlayerHit();
             return;
         }
 
-        this.#handleEntityGroupHitcheck(this.screenContent.breakableWalls, WALL_SCORE_VALUE);
-    }
-
-    #handleEntityGroupHitcheck(entities, scoreValue) {
-        let entitiesHit = 0;
-        let score = 0;
-        const toRemove = [];
-        for (let entity of entities) {
-            const entityBounds = entity.getBounds();
-            for (let explosionInstance of this.screenContent.explosions) {
-                for (let explosion of explosionInstance.explosions) {
-                    const explosionBounds = explosion.getBounds();
-                    if (checkCollision(explosionBounds.x, explosionBounds.y, explosionBounds.width, explosionBounds.height, entityBounds.x, entityBounds.y, entityBounds.width, entityBounds.height)) {
-                        this.app.stage.removeChild(entity);
-                        entitiesHit += 1;
-                        score += scoreValue;
-                        toRemove.push(entity);
-                        break;
-                    }
-                }
-            }
-        }
-        // remove the entities that are to be removed
-        for (let entity of toRemove) {
-            entities.splice(entities.indexOf(entity), 1);
+        updateResponse = this.#updateEnemies(delta, obstacles, bombs, explosionInstances);
+        if (updateResponse.enemiesHit) {
+            enemiesHit += updateResponse.enemiesHit;
         }
 
-        score = score * entitiesHit;
-        this.stats.score += score;
+        updateResponse = this.#updateBreakableWalls(explosionInstances);
+        if (updateResponse.brokenWalls) {
+            brokenWalls += updateResponse.brokenWalls;
+        }
+
+        this.#updateBombs(delta);
+        this.#updateExplosions(delta);
+        this.#updateExitDoorLogic();
+
+        return { enemiesHit: enemiesHit, brokenWalls: brokenWalls };
     }
 
     /**
@@ -847,12 +714,11 @@ export class GameSessionManager {
                                                                        Math.floor(this.screenContent.arena.rowsCount / 2));
                 this.#spawnEntity(this.screenContent.exitDoor, x, y);
                 // keep player on top
-                this.app.stage.removeChild(this.screenContent.player);
-                this.app.stage.addChild(this.screenContent.player);
+                this.screenContent.player.moveToTop();
             }
 
             // check if doors completely contain player
-            const playerBounds = this.screenContent.player.getBounds();
+            const playerBounds = this.screenContent.player.elem.getBounds();
             const doorBounds = this.screenContent.exitDoor.getBounds();
             if (playerBounds.x >= doorBounds.x && playerBounds.x + playerBounds.width <= doorBounds.x + doorBounds.width &&
                 playerBounds.y >= doorBounds.y && playerBounds.y + playerBounds.height <= doorBounds.y + doorBounds.height) {
@@ -872,6 +738,29 @@ export class GameSessionManager {
                 this.screenContent.exitDoor = null;
             }
         }
+    }
+
+    /**
+     * Updates the game score.
+     * @param {Object} scoreUpdate - The score update object.
+     */
+    #updateScore(scoreUpdate) {
+        if (!scoreUpdate) {
+            return;
+        }
+        let multiplier = 0;
+        let result = 0;
+
+        if (scoreUpdate.enemiesHit) {
+            result += ENEMY_SCORE_VALUE * scoreUpdate.enemiesHit;
+            multiplier += scoreUpdate.enemiesHit;
+        }
+        if (scoreUpdate.brokenWalls) {
+            result += WALL_SCORE_VALUE * scoreUpdate.brokenWalls;
+            multiplier += scoreUpdate.brokenWalls;
+        }
+        
+        this.stats.score += result * multiplier;
     }
 
     /**
@@ -944,6 +833,8 @@ export class GameSessionManager {
      * @param {Object} delta - The delta object for time-based updates.
      */
     #handleGameSessionInProgressUpdate(delta) {
+        let scoreUpdate = {};
+
         // process entity updates when the screen is not being resized
         if (!this.basisChange) {
             // check if player finished last level
@@ -951,24 +842,18 @@ export class GameSessionManager {
                 // TODO game over
             }
 
-
-
             this.stats.time = this.stats.time + delta.elapsedMS;
 
             this.#updateStats();
-            this.#updateEntities(delta);
-
+            scoreUpdate = this.#updateEntities(delta);
+            this.#updateScore(scoreUpdate);
             // this.#handleLevelEnd();
             // this.#handleGameEnd();
         }
     }
 
     #handleGameSessionPlayerHitUpdate(delta) {
-        if (this.keyInputs.left.release 
-            || this.keyInputs.right.release 
-            || this.keyInputs.up.release 
-            || this.keyInputs.down.release
-            || this.keyInputs.space.press
+        if (this.keyInputs.space.press
             || this.keyInputs.esc.press
             || this.keyInputs.pause.press) 
         {
@@ -981,8 +866,7 @@ export class GameSessionManager {
                 this.playerMoving = false;
             }
             // get player to be on top of everything
-            this.app.stage.removeChild(this.screenContent.player);
-            this.app.stage.addChild(this.screenContent.player);
+            this.screenContent.player.moveToTop();
         
             this.playerHitScreenInfo = {};
             this.playerHitScreenInfo.playerHitTime = 0;
@@ -990,7 +874,7 @@ export class GameSessionManager {
         }
 
         // blink the player sprite
-        if (this.playerHitScreenInfo.playerHitBlinkTime >= DURATION_MS_PLAYER_HIT_BLINK) {
+        if (this.playerHitScreenInfo.playerHitBlinkTime >= DURATIONS.MS_PLAYER_HIT_BLINK) {
             if (this.screenContent.player.visible) {
                 this.screenContent.player.visible = false;
             }
@@ -998,11 +882,11 @@ export class GameSessionManager {
                 this.screenContent.player.visible = true;
 
             }
-            this.playerHitScreenInfo.playerHitBlinkTime -= DURATION_MS_PLAYER_HIT_BLINK;
+            this.playerHitScreenInfo.playerHitBlinkTime = 0;
         }
 
         // player hit timer check
-        if (this.playerHitScreenInfo.playerHitTime >= DURATION_MS_PLAYER_HIT) {
+        if (this.playerHitScreenInfo.playerHitTime >= DURATIONS.MS_PLAYER_HIT) {
             this.playerHitScreenInfo = null;
             this.stats.lives -= 1;
             if (this.stats.lives <= 0) {
@@ -1035,7 +919,7 @@ export class GameSessionManager {
         }
 
         // if its time to switch to the game session
-        if (this.levelChangeInfo.levelChangeTime >= DURATION_MS_LEVEL_CHANGE) {
+        if (this.levelChangeInfo.levelChangeTime >= DURATIONS.MS_LEVEL_CHANGE) {
             this.levelChangeInfo = null;
             for (let elem of this.screenContent.infoScreenElems) {
                 this.app.stage.removeChild(elem);
@@ -1132,15 +1016,15 @@ export class GameSessionManager {
         
         this.screenContent.arena.redraw(SCALE_WIDTH_ARENA_TO_SCREEN, SCALE_HEIGHT_ARENA_TO_SCREEN);
         for (let breakableWall of this.screenContent.breakableWalls) {
-            this.#redrawEntity(breakableWall);
+            breakableWall.redraw(this.prevScreenSize);
         }
         this.#drawStats();
         for (let enemy of this.screenContent.enemies) {
             enemy.redraw(this.prevScreenSize);
         }
-        this.#redrawEntity(this.screenContent.player, SCALE_PLAYER_TO_WALL);
+        this.screenContent.player.redraw(this.prevScreenSize);
         for (let bomb of this.screenContent.bombs) {
-            this.#redrawEntity(bomb.bomb, SCALE_BOMB_TO_WALL);
+            bomb.redraw(this.prevScreenSize);
         }
         for (let explosion_instance of this.screenContent.explosions) {
             for (let explosion of explosion_instance.explosions) {
@@ -1152,7 +1036,7 @@ export class GameSessionManager {
         }
         if (this.screenContent.exitDoor) {
             this.#redrawEntity(this.screenContent.exitDoor);
-        }
+        } //TODO
 
         if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN
             || this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
@@ -1230,7 +1114,7 @@ export class GameSessionManager {
         }
         
         for (let bomb of this.screenContent.bombs) {
-            this.app.stage.removeChild(bomb.bomb);
+            bomb.remove();
         }
         
         for (let explosionInstance of this.screenContent.explosions) {
@@ -1240,11 +1124,11 @@ export class GameSessionManager {
         }
         
         for (let enemy of this.screenContent.enemies) {
-            this.app.stage.removeChild(enemy.elem);
+            enemy.remove();
         }
 
         if (this.screenContent.player) {
-            this.app.stage.removeChild(this.screenContent.player);
+            this.screenContent.player.remove();
         }
         
         this.screenContent.nullable = true;

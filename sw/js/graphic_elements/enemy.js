@@ -1,4 +1,5 @@
 import { Entity } from './entity.js';
+import { DURATIONS } from '/js/constants/durations.js';
 
 //TODO movement
 
@@ -16,22 +17,23 @@ export class Enemy extends Entity {
         [this.DIFFICULTY_HARD]: { bfs: 70, dfs: 30, targetPlayer: 90 }
     };
     #NO_ANCESTOR = -1;
-    #DURATION_MS_SPRITE_CHANGE = 150; // 0.15 seconds
+    #DURATION_MS_SPRITE_CHANGE = DURATIONS.MS_SPRITE_CHANGE_ENEMY;
 
     /**
      * Represents an enemy in the arena.
      * @param app {PIXI.Application} - The PIXI application.
      * @param arena {Arena} - The arena where the enemy will be spawned.
-     * @param graphicElem {PIXI.Sprite} - The graphic element that represents the enemy.
+     * @param idleTexture {PIXI.Texture} - The texture to show when the enemy is not moving.
      * @param scaleToWall {number} - The scale factor to apply to the enemy.
+     * @param animationTextures {Array} - The textures to show when the enemy is moving.
      * @param [difficulty=this.DIFFICULTY_MEDIUM] {number} - The difficulty of the enemy.
      */
-    constructor(app, arena, graphicElem, scaleToWall, animationSprites, difficulty = Enemy.DIFFICULTY_MEDIUM) {
-        super(app, arena, graphicElem, scaleToWall);
+    constructor(app, arena, idleTexture, scaleToWall, animationTextures, difficulty = Enemy.DIFFICULTY_MEDIUM) {
+        super(app, arena, idleTexture, scaleToWall);
         this.difficulty = difficulty;
         this._remainingPath = [];
         this.spriteChangeTime = 0;
-        this.animationSprites = animationSprites;
+        this.animationSprites = animationTextures;
         this.currentSpriteIndex = 0;
     }
 
@@ -41,7 +43,7 @@ export class Enemy extends Entity {
         if (this.spriteChangeTime >= this.#DURATION_MS_SPRITE_CHANGE) {
             this.currentSpriteIndex = (this.currentSpriteIndex + 1) % this.animationSprites.length;
             this.elem.texture = this.animationSprites[this.currentSpriteIndex];
-            this.spriteChangeTime -= this.#DURATION_MS_SPRITE_CHANGE;
+            this.spriteChangeTime = 0;
         }
 
         // change direction if needed
@@ -55,7 +57,9 @@ export class Enemy extends Entity {
             this.elem.x -= this.elem.width;
         }
 
-        super.update(updateData);
+        const res = super.update(updateData);
+        res.spriteChangeTime = this.spriteChangeTime;
+        return res;
     }
 
     /**
