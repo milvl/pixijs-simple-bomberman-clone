@@ -1,7 +1,7 @@
 import { Entity } from './entity.js';
 import { DURATIONS } from '/js/constants/durations.js';
-
-//TODO movement
+import { MOVEMENT_SPEEDS } from '/js/constants/movement_speeds.js';
+import { COMPARISON_CONSTANTS } from '/js/constants/comparison_constants.js';
 
 /**
  * Represents an enemy in the arena.
@@ -18,6 +18,7 @@ export class Enemy extends Entity {
     };
     #NO_ANCESTOR = -1;
     #DURATION_MS_SPRITE_CHANGE = DURATIONS.MS_SPRITE_CHANGE_ENEMY;
+    #MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT = MOVEMENT_SPEEDS.ENEMY_SCALE_FACTOR_TO_SCREEN_HEIGHT;
 
     /**
      * Represents an enemy in the arena.
@@ -31,19 +32,22 @@ export class Enemy extends Entity {
     constructor(app, arena, idleTexture, scaleToWall, animationTextures, difficulty = Enemy.DIFFICULTY_MEDIUM) {
         super(app, arena, idleTexture, scaleToWall);
         this.difficulty = difficulty;
-        this._remainingPath = [];
+        this.remainingPath = [];
         this.spriteChangeTime = 0;
         this.animationSprites = animationTextures;
         this.currentSpriteIndex = 0;
+        this.movementSpeed = this.app.screen.height * this.#MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT;
+        this.epsilon = this.app.screen.height * COMPARISON_CONSTANTS.EPSILON_SCALE_FACTOR_TO_SCREEN_HEIGHT;
     }
 
     update(updateData) {
-        const { deltaTimeMS: deltaTimeMS } = updateData;
-        this.spriteChangeTime += deltaTimeMS;
-        if (this.spriteChangeTime >= this.#DURATION_MS_SPRITE_CHANGE) {
-            this.currentSpriteIndex = (this.currentSpriteIndex + 1) % this.animationSprites.length;
-            this.elem.texture = this.animationSprites[this.currentSpriteIndex];
-            this.spriteChangeTime = 0;
+        this.#updateSprite(updateData);
+
+        // enemy AI
+        if (this.remainingPath.length <= 0) {
+            this.#tryToAcquireTarget(updateData);
+        } else {
+            this.#getMovesTowardsTarget(updateData);
         }
 
         // change direction if needed
@@ -60,6 +64,93 @@ export class Enemy extends Entity {
         const res = super.update(updateData);
         res.spriteChangeTime = this.spriteChangeTime;
         return res;
+    }
+
+    redraw(prevScreenSize) {
+        this.remainingPath = [];
+        super.redraw(prevScreenSize);
+    }
+
+    /**
+     * Updates the sprite of the enemy.
+     * @param updateData {object} - The update data.
+     */
+    #updateSprite(updateData) {
+        const { deltaTimeMS: deltaTimeMS } = updateData;
+
+        // change sprite
+        this.spriteChangeTime += deltaTimeMS;
+        if (this.spriteChangeTime >= this.#DURATION_MS_SPRITE_CHANGE) {
+            this.currentSpriteIndex = (this.currentSpriteIndex + 1) % this.animationSprites.length;
+            this.elem.texture = this.animationSprites[this.currentSpriteIndex];
+            this.spriteChangeTime = 0;
+        }
+    }
+
+    #tryToAcquireTarget(updateData) {
+        const { bfs, dfs, targetPlayer } = this.#PROBABILITIES[this.difficulty];
+        const pathTypeBfs = Math.random() * 100 < bfs;
+        
+        // decide if the enemy will target the player or random empty space
+        let doTargetPlayer = false;
+        if (Math.random() * 100 < targetPlayer) {
+            doTargetPlayer = true;
+        }
+
+        // get target position
+        const obstacles = updateData.obstacles ? updateData.obstacles : [];
+        const bombs = updateData.bombs ? updateData.bombs : [];
+        const occupiedGrid = this.#createOccupiedGrid(obstacles, bombs);
+        const graph = this.#createGraph(occupiedGrid);
+
+        let targetPosition = {};
+        if (doTargetPlayer) {
+            if (!updateData.playerGridPosition) {
+                throw new Error('Player position not provided');
+            }
+            targetPosition = updateData.playerGridPosition;
+        }
+        else {
+            targetPosition = this.#getRandomEmptySpace(occupiedGrid);
+        }
+
+        // calculate path
+        this.remainingPath = pathTypeBfs ? this.#bfsPath(targetPosition.gridX, targetPosition.gridY, graph) : this.#dfsPath(targetPosition.gridX, targetPosition.gridY, graph);
+    }
+
+    #getMovesTowardsTarget(updateData) {
+        if (this.remainingPath.length > 0) {
+            let { x: nextStepX, y: nextStepY } = this.remainingPath[0];
+            const { minX: currentX, minY: currentY } = this.elem.getBounds();
+            const distanceX = Math.abs(nextStepX - currentX);
+            const distanceY = Math.abs(nextStepY - currentY);
+
+            // check if target reached
+            if (distanceX < this.epsilon && distanceY < this.epsilon) {
+                this.remainingPath.shift();
+                return;
+            }
+
+            const stdMoveDistance = this.movementSpeed * (updateData.deltaTimeMS / 1000);
+
+            let deltaX = 0;
+            let deltaY = 0;
+            if (nextStepX < currentX) {
+                deltaX = stdMoveDistance > distanceX ? -distanceX : -stdMoveDistance;
+            }
+            else if (nextStepX > currentX) {
+                deltaX = stdMoveDistance > distanceX ? distanceX : stdMoveDistance;
+            }
+            if (nextStepY < currentY) {
+                deltaY = stdMoveDistance > distanceY ? -distanceY : -stdMoveDistance;
+            }
+            else if (nextStepY > currentY) {
+                deltaY = stdMoveDistance > distanceY ? distanceY : stdMoveDistance;
+            }
+
+            updateData.deltaX = deltaX;
+            updateData.deltaY = deltaY;
+        }
     }
 
     /**
@@ -84,38 +175,37 @@ export class Enemy extends Entity {
     }
 
     /**
-     * Creates a grid with walls, breakable walls and bombs.
-     * @param {Array} breakableWalls array of breakable walls
-     * @param {Array} bombs array of bombs
-     * @returns {Array} grid with walls, breakable walls and bombs (true if free, false if occupied)
+     * Creates a grid with walls, breakable walls, and bombs.
+     * @param {Array} breakableWalls Array of breakable wall objects.
+     * @param {Array} bombs Array of bomb objects.
+     * @returns {Array} Grid with walls, breakable walls, and bombs (true if free, false if occupied).
      */
     #createOccupiedGrid(breakableWalls, bombs) {
-        // grid with walls, breakable walls and bombs (true if free, false if occupied)
-        const occupiedGrid = [];
-        for (let i = 0; i < this.arena.rowsCount; i++) {
-            let row = [];
-            for (let j = 0; j < this.arena.colsCount; j++) {
-                let occupied = false;
-                if (this.arena.grid[i][j].type === this.arena.GRID_CELL_TYPE.WALL) {
-                    occupied = true;
+        const occupiedGrid = Array.from({ length: this.arena.rowsCount }, () => Array(this.arena.colsCount).fill(false));
+        
+        // mark walls
+        for (let j = 0; j < this.arena.rowsCount; j++) {
+            for (let i = 0; i < this.arena.colsCount; i++) {
+                if (this.arena.grid[j][i].type === this.arena.GRID_CELL_TYPE.WALL) {
+                    occupiedGrid[j][i] = true;
                 }
-                for (let breakableWall of breakableWalls) {
-                    const { x, y } = this.arena.canvasToGrid(breakableWall.x, breakableWall.y);
-                    if (x === j && y === i) {
-                        occupied = true;
-                        break;
-                    }
-                }
-                for (let bomb of bombs) {
-                    const { x, y } = this.arena.canvasToGrid(bomb.x, bomb.y);
-                    if (x === j && y === i) {
-                        occupied = true;
-                        break;
-                    }
-                }
-                row.push(occupied);
             }
-            occupiedGrid.push(row);
+        }
+        
+        // mark breakable walls
+        for (let breakableWall of breakableWalls) {
+            const { x, y } = this.arena.canvasToGrid(breakableWall.elem.x, breakableWall.elem.y);
+            if (x > 0 && x < this.arena.colsCount - 1 && y > 0 && y < this.arena.rowsCount - 1) {
+                occupiedGrid[y][x] = true;
+            }
+        }
+
+        // mark bombs
+        for (let bomb of bombs) {
+            const { x, y } = this.arena.canvasToGrid(bomb.elem.x, bomb.elem.y);
+            if (x > 0 && x < this.arena.colsName - 1 && y > 0 && y < this.arena.rowsBar - 1) {
+                occupiedGrid[y][x] = true;
+            }
         }
 
         return occupiedGrid;
@@ -135,27 +225,27 @@ export class Enemy extends Entity {
         }
 
         // create graph
-        for (let i = 0; i < this.arena.rowsCount; i++) {
-            for (let j = 0; j < this.arena.colsCount; j++) {
-                if (occupiedGrid[i][j]) {
+        for (let j = 0; j < this.arena.rowsCount; j++) {
+            for (let i = 0; i < this.arena.colsCount; i++) {
+                if (occupiedGrid[j][i]) {
                     continue;
                 }
-                let index = this.#getGraphIndex(i, j, this.arena.colsCount);
+                let index = this.#getGraphIndex(j, i, this.arena.colsCount);
                 // upper neighbour
-                if (i > 0 && !occupiedGrid[i - 1][j]) {
-                    graph[index].push(this.#getGraphIndex(i - 1, j, this.arena.colsCount));
+                if (!occupiedGrid[j - 1][i]) {
+                    graph[index].push(this.#getGraphIndex(j - 1, i, this.arena.colsCount));
                 }
                 // lower neighbour
-                if (i < this.arena.rowsCount - 1 && !occupiedGrid[i + 1][j]) {
-                    graph[index].push(this.#getGraphIndex(i + 1, j, this.arena.colsCount));
+                if (!occupiedGrid[j + 1][i]) {
+                    graph[index].push(this.#getGraphIndex(j + 1, i, this.arena.colsCount));
                 }
                 // left neighbour
-                if (j > 0 && !occupiedGrid[i][j - 1]) {
-                    graph[index].push(this.#getGraphIndex(i, j - 1, this.arena.colsCount));
+                if (!occupiedGrid[j][i - 1]) {
+                    graph[index].push(this.#getGraphIndex(j, i - 1, this.arena.colsCount));
                 }
                 // right neighbour
-                if (j < this.arena.colsCount - 1 && !occupiedGrid[i][j + 1]) {
-                    graph[index].push(this.#getGraphIndex(i, j + 1, this.arena.colsCount));
+                if (!occupiedGrid[j][i + 1]) {
+                    graph[index].push(this.#getGraphIndex(j, i + 1, this.arena.colsCount));
                 }
             }
         }
@@ -175,36 +265,7 @@ export class Enemy extends Entity {
             i = Math.floor(Math.random() * occupiedGrid.length);
             j = Math.floor(Math.random() * occupiedGrid[0].length);
         }
-        return { targetX: j, targetY: i };
-    }
-
-    calculatePath(playerX, playerY, breakableWalls, bombs) {
-        // TODO here
-        const { bfs, dfs, targetPlayer } = this.#PROBABILITIES[this.difficulty];
-        const grid = this.#createOccupiedGrid(breakableWalls, bombs);
-        const graph = this.#createGraph(grid);
-
-        const choice = Math.random() * 100;
-
-        const { targetX, targetY } = choice < targetPlayer ? this.#getRandomEmptySpace(grid) : { targetX: playerX, targetY: playerY };
-
-        if (choice < bfs) {
-            this._remainingPath = this.#bfsPath(targetX, targetY, graph, screenWidth, screenHeight);
-        } else {
-            this._remainingPath = this.#dfsPath(targetX, targetY, graph, screenWidth, screenHeight);
-        }
-
-        return this.remainingPath;
-    }
-
-    /**
-     * Informs the enemy that it has reached a node in the path.
-     * Removes the node from the path.
-     */
-    nodeReached() {
-        if (this.remainingPath.length > 0) {
-            this.remainingPath.shift();
-        }
+        return { gridX: j, gridY: i };
     }
 
     /**
@@ -213,19 +274,23 @@ export class Enemy extends Entity {
      * @param {number} colsCount number of columns in the grid
      * @returns {Array} array of objects with i and j properties
      */
-    #getGridIndicesPath(graphPath, colsCount) {
+    #getCoordinancePathScaledToEnemySize(graphPath, colsCount) {
         const gridIndicesPath = [];
         for (let node of graphPath) {
             const { i, j } = this.#getGridIndices(node, colsCount);
-            gridIndicesPath.push({ i: i, j: j });
+            const { x: upperCornerX, y: upperCornerY } = this.arena.gridToCanvas(j, i);
+            const x = upperCornerX + (this.arena.wallWidth - this.elem.width) / 2;
+            const y = upperCornerY + (this.arena.wallHeight - this.elem.height) / 2;
+            gridIndicesPath.push({ x: x, y: y });
         }
         return gridIndicesPath;
     }
 
-    #bfsPath(targetX, targetY, graph) {
+    #bfsPath(targetGridX, targetGridY, graph) {
         const queue = [];
         const enqued = new Set();
-        const startPosition = this.arena.canvasToGrid(this.elem.x, this.elem.y);
+        const elemBounds = this.elem.getBounds();
+        const startPosition = this.arena.canvasToGrid(elemBounds.minX, elemBounds.minY);
         const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, this.arena.colsCount);
 
         const prev = Array(graph.length).fill(this.#NO_ANCESTOR);
@@ -236,7 +301,7 @@ export class Enemy extends Entity {
             const node = queue.shift();
 
             // check if target reached and return path
-            if (node === this.#getGraphIndex(targetY, targetX, this.arena.colsCount)) {
+            if (node === this.#getGraphIndex(targetGridY, targetGridX, this.arena.colsCount)) {
                 const graphPath = [];
                 let currentNode = node;
                 while (prev[currentNode] !== this.#NO_ANCESTOR) {
@@ -247,7 +312,7 @@ export class Enemy extends Entity {
                 graphPath.reverse();
                 
                 // convert graph path to grid indices path
-                return this.#getGridIndicesPath(graphPath, this.arena.colsCount);
+                return this.#getCoordinancePathScaledToEnemySize(graphPath, this.arena.colsCount);
             }
 
             for (let neighbour of graph[node]) {
@@ -263,11 +328,11 @@ export class Enemy extends Entity {
         return [];
     }
     
-    #dfsPath(targetX, targetY, graph) {
+    #dfsPath(targetGridX, targetGridY, graph) {
         const stack = [];
         const stacked = new Set();
-        
-        const startPosition = this.arena.canvasToGrid(this.elem.x, this.elem.y);
+        const elemBounds = this.elem.getBounds();
+        const startPosition = this.arena.canvasToGrid(elemBounds.minX, elemBounds.minY);
         const startNodeGraphIndex = this.#getGraphIndex(startPosition.y, startPosition.x, this.arena.colsCount);
 
         const prev = Array(graph.length).fill(this.#NO_ANCESTOR);
@@ -278,7 +343,7 @@ export class Enemy extends Entity {
             const node = stack.pop();
 
             // check if target reached and return path
-            if (node === this.#getGraphIndex(targetY, targetX, this.arena.colsCount)) {
+            if (node === this.#getGraphIndex(targetGridY, targetGridX, this.arena.colsCount)) {
                 const graphPath = [];
                 let currentNode = node;
                 while (prev[currentNode] !== this.#NO_ANCESTOR) {
@@ -289,7 +354,7 @@ export class Enemy extends Entity {
                 graphPath.reverse();
                 
                 // convert graph path to grid indices path
-                return this.#getGridIndicesPath(graphPath, this.arena.colsCount);
+                return this.#getCoordinancePathScaledToEnemySize(graphPath, this.arena.colsCount);
             }
             
             // add neighbours to stack (random order)
@@ -307,9 +372,5 @@ export class Enemy extends Entity {
 
     get elem() {
         return this._elem;
-    }
-
-    get remainingPath() {
-        return this.remainingPath;
     }
 }

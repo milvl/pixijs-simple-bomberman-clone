@@ -159,7 +159,8 @@ export class Game {
                         this.screenContent.submited = this.screenContent.selected;
                         break;
                     case 2:
-                        this.screenContent.submited = this.screenContent.selected;
+                        // TODO this.screenContent.submited = this.screenContent.selected;
+                        alert('Leaderboards are disabled for this demo.');
                         break;
                     default:
                         console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
@@ -246,7 +247,7 @@ export class Game {
 
                 this.gameState.switchState(GAME_STATES.MAIN_MENU);
             }
-            // game ended with a win
+            // game ended with a win or loss
             else {
                 this.drawingManager = null;
                 if (this.screenContent.nullable === true) {

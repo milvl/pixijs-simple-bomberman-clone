@@ -33,6 +33,16 @@ export class Entity {
     }
 
     /**
+     * Gets the grid position of the entity.
+     * @returns {object} - The grid position of the entity.
+     */
+    get gridPosition() {
+        const { x, y } = this.elem;
+        const { x: gridX, y: gridY } = this.arena.canvasToGrid(x, y);
+        return { gridX, gridY };
+    }
+
+    /**
      * Spawns the entity in the arena.
      * If start_x and start_y are provided, the entity will spawn at that position.
      * Otherwise, it will spawn at a random empty space.

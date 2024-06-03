@@ -1,11 +1,12 @@
 import { Entity } from './entity.js';
 import { DURATIONS } from '/js/constants/durations.js';
+import { MOVEMENT_SPEEDS } from '/js/constants/movement_speeds.js';
 
 const MODULE_NAME_PREFIX = 'player.js - ';
 
 export class Player extends Entity {
-    MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT = 0.11;
-    DURATION_MS_MOVEMENT_SPRITE_CHANGE_PLAYER = DURATIONS.MS_MOVEMENT_SPRITE_CHANGE_PLAYER;
+    #MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT = MOVEMENT_SPEEDS.PLAYER_SCALE_FACTOR_TO_SCREEN_HEIGHT;
+    #DURATION_MS_MOVEMENT_SPRITE_CHANGE_PLAYER = DURATIONS.MS_MOVEMENT_SPRITE_CHANGE_PLAYER;
 
     /**
      * Represents the player in the arena.
@@ -21,7 +22,7 @@ export class Player extends Entity {
         this.idleTexture = idleTexture;
         this.movementTextures = movementTextures;
         this.currentPlayerTextureIndex = 0;
-        this.movementSpeed = this.app.screen.height * this.MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
+        this.movementSpeed = this.app.screen.height * this.#MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT;
         this.movementTime = 0;
     }
 
@@ -93,7 +94,7 @@ export class Player extends Entity {
         if (this.isMoving) {
             this.movementTime += deltaTimeMS;
 
-            if (this.movementTime >= this.DURATION_MS_MOVEMENT_SPRITE_CHANGE_PLAYER) {
+            if (this.movementTime >= this.#DURATION_MS_MOVEMENT_SPRITE_CHANGE_PLAYER) {
                 this.currentPlayerTextureIndex = (this.currentPlayerTextureIndex + 1) % this.movementTextures.length;
                 this.elem.texture = this.movementTextures[this.currentPlayerTextureIndex];
                 this.movementTime = 0;
@@ -116,6 +117,6 @@ export class Player extends Entity {
      */
     redraw(prevScreenSize) {
         super.redraw(prevScreenSize);
-        this.movementSpeed = this.app.screen.height * this.MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
+        this.movementSpeed = this.app.screen.height * this.#MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT;
     }
 }

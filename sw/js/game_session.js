@@ -542,9 +542,10 @@ export class GameSessionManager {
      */
     #updateEnemies(delta, obstacles, bombs, entitiesToCheckHitBy) {
         const updateData = {
-            deltaX: 0,
-            deltaY: 0,  // TODO
+            deltaX: null,
+            deltaY: null,
             deltaTimeMS: delta.elapsedMS,
+            playerGridPosition: this.screenContent.player.gridPosition,
             obstacles: obstacles,
             bombs: bombs,
             entitiesToCheckHitBy: entitiesToCheckHitBy,
@@ -740,11 +741,13 @@ export class GameSessionManager {
             return;
         }
 
+        // update enemies
         updateResponse = this.#updateEnemies(delta, obstacles, bombs, explosionInstances);
         if (updateResponse.enemiesHit) {
             enemiesHit += updateResponse.enemiesHit;
         }
 
+        // update breakable walls
         updateResponse = this.#updateBreakableWalls(explosionInstances);
         if (updateResponse.brokenWalls) {
             brokenWalls += updateResponse.brokenWalls;
@@ -783,7 +786,7 @@ export class GameSessionManager {
                 playerBounds.y >= doorBounds.y && playerBounds.y + playerBounds.height <= doorBounds.y + doorBounds.height) {
                 // player entered door
                 // remove the config from the list
-                this.levelsConfig.splice(this.level - 1, 1);
+                this.levelsConfig.splice(0, 1);
                 if (this.levelsConfig.length === 0) {
                     this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
                     this.#cleanUpKeyInputs();
@@ -897,15 +900,15 @@ export class GameSessionManager {
      * @param {Object} delta - The delta object for time-based updates.
      */
     #handleGameSessionInProgressUpdate(delta) {
-        let scoreUpdate = {};
+        let scoreUpdateResponse = {};
 
         // process entity updates when the screen is not being resized
         if (!this.basisChange) {
             this.stats.time = this.stats.time + delta.elapsedMS;
 
             this.#updateStats();
-            scoreUpdate = this.#updateEntities(delta);
-            this.#updateScore(scoreUpdate);
+            scoreUpdateResponse = this.#updateEntities(delta);
+            this.#updateScore(scoreUpdateResponse);
         }
     }
 
