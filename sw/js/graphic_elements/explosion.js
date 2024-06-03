@@ -1,3 +1,4 @@
+import { Arena } from './arena.js';
 import { Entity } from './entity.js';
 import { DURATIONS } from '/js/constants/durations.js';
 
@@ -82,7 +83,7 @@ export class Explosion {
         this._explosionInstances.push(explosion);
         // all directions
         for (let dir of spread) {
-            if (this.arena.grid[dir.y][dir.x].type === this.arena.GRID_CELL_TYPE.EMPTY) {
+            if (this.arena.grid[dir.y][dir.x].type === Arena.GRID_CELL_TYPE.EMPTY) {
                 explosion = new ExplosionInstance(this.app, this.arena, this.texture, this.scaleToWall);
                 spawnCoords.push(this.arena.gridToCanvas(dir.x, dir.y));
                 this._explosionInstances.push(explosion);

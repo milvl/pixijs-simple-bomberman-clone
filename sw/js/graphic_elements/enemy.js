@@ -2,19 +2,20 @@ import { Entity } from './entity.js';
 import { DURATIONS } from '/js/constants/durations.js';
 import { MOVEMENT_SPEEDS } from '/js/constants/movement_speeds.js';
 import { COMPARISON_CONSTANTS } from '/js/constants/comparison_constants.js';
+import { Arena } from './arena.js';
 
 /**
  * Represents an enemy in the arena.
  * @extends Entity
  */
 export class Enemy extends Entity {
-    DIFFICULTY_EASY = 0;
-    DIFFICULTY_MEDIUM = 1;
-    DIFFICULTY_HARD = 2;
+    static DIFFICULTY_EASY = 0;
+    static DIFFICULTY_MEDIUM = 1;
+    static DIFFICULTY_HARD = 2;
     #PROBABILITIES = {
-        [this.DIFFICULTY_EASY]: { bfs: 30, dfs: 30, targetPlayer: 40 },
-        [this.DIFFICULTY_MEDIUM]: { bfs: 50, dfs: 50, targetPlayer: 65 },
-        [this.DIFFICULTY_HARD]: { bfs: 70, dfs: 30, targetPlayer: 90 }
+        [Enemy.DIFFICULTY_EASY]: { bfs: 30, dfs: 30, targetPlayer: 40 },
+        [Enemy.DIFFICULTY_MEDIUM]: { bfs: 50, dfs: 50, targetPlayer: 65 },
+        [Enemy.DIFFICULTY_HARD]: { bfs: 70, dfs: 30, targetPlayer: 90 }
     };
     #NO_ANCESTOR = -1;
     #DURATION_MS_SPRITE_CHANGE = DURATIONS.MS_SPRITE_CHANGE_ENEMY;
@@ -186,7 +187,7 @@ export class Enemy extends Entity {
         // mark walls
         for (let j = 0; j < this.arena.rowsCount; j++) {
             for (let i = 0; i < this.arena.colsCount; i++) {
-                if (this.arena.grid[j][i].type === this.arena.GRID_CELL_TYPE.WALL) {
+                if (this.arena.grid[j][i].type === Arena.GRID_CELL_TYPE.WALL) {
                     occupiedGrid[j][i] = true;
                 }
             }

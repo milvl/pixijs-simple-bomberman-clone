@@ -1,5 +1,5 @@
 import { GameState, GAME_STATES } from "./game_states.js";
-import { MainMenuDrawingManager, SettingsDrawingManager } from "./drawing_manager_menus.js";
+import { MainMenuDrawingManager, SettingsDrawingManager, EndGameDrawingManager } from "./drawing_manager_menus.js";
 import { GameSessionManager } from "./game_session.js";
 
 const MODULE_NAME_PREFIX = 'game.js - ';
@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS_CONTENT = {
 
 const DEFAULT_GAME_END_CONTENT = {
     updated: true,
-    title: 'Enter your name:',
+    title: '-----------\n | Game End | \n  -----------  \n\n\n Enter your name:',
     options: [
         { letter: 'A', index: 0 },
         { letter: 'A', index: 0 },
@@ -91,7 +91,7 @@ export class Game {
         this.keyInputs = keyInputs;
         this.windowChange = windowChange;
 
-        this.settings = { ...DEFAULT_SETTINGS};
+        this.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         this.gameState = new GameState(this.window);
         this.screenContent = null;
         this.recievedStats = null;
@@ -146,7 +146,7 @@ export class Game {
      */
     #initMainMenu() {
         // copy the default content
-        this.screenContent = { ...DEFAULT_MAIN_MENU_CONTENT };
+        this.screenContent = { ...DEFAULT_MAIN_MENU_CONTENT }
 
         // bind key inputs to functions to update the content
         let enterCallback = () => {
@@ -394,12 +394,18 @@ export class Game {
 
     #handleGameEndScreen() {
         if (this.screenContent === null) {
-            this.screenContent = { ...DEFAULT_GAME_END_CONTENT };
+            // create copy of the default content
+            this.screenContent = JSON.parse(JSON.stringify(DEFAULT_GAME_END_CONTENT));
             this.#setupGameEndKeys();
         }
 
+        if (this.drawingManager === null) {
+            this.drawingManager = new EndGameDrawingManager(this.app, this.textures, this.screenContent);
+            this.drawingManager.draw();
+        }
+
         if (this.screenContent.updated) {
-            // this.drawingManager.redraw();
+            this.drawingManager.redraw();
             console.log(MODULE_NAME_PREFIX, 'Selected index:', this.screenContent.selected);
             this.screenContent.options.forEach((option, index) => {
                 console.log(MODULE_NAME_PREFIX, `Option ${index}: ${option.letter}`);

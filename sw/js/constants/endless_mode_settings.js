@@ -1,0 +1,4 @@
+export const ENDLESS_MODE_SETTINGS = {
+    MAX_ENEMIES: 10,
+    MAX_BREAKABLE_WALLS: 25,
+};

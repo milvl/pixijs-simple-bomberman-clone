@@ -6,7 +6,7 @@ const MODULE_NAME_PREFIX = 'arena.js - ';
  * Represents a game session.
  */
 export class Arena {
-    GRID_CELL_TYPE = {
+    static GRID_CELL_TYPE = {
         WALL: 1,
         EMPTY: 0,
     };
@@ -46,11 +46,11 @@ export class Arena {
             const row = [];
             for (let colIndex = 0; colIndex < colsCount; colIndex++) {
                 if (rowIndex === 0 || rowIndex === (rowsCount - 1) || colIndex === 0 || colIndex === (colsCount - 1)) {
-                    row.push({type: this.GRID_CELL_TYPE.WALL, elem: null}); // outer walls
+                    row.push({type: Arena.GRID_CELL_TYPE.WALL, elem: null}); // outer walls
                 } else if ((rowIndex % 2) === 0 && (colIndex % 2) === 0) {
-                    row.push({type: this.GRID_CELL_TYPE.WALL, elem: null}); // inner walls
+                    row.push({type: Arena.GRID_CELL_TYPE.WALL, elem: null}); // inner walls
                 } else {
-                    row.push({type: this.GRID_CELL_TYPE.EMPTY, elem: null}); // empty space
+                    row.push({type: Arena.GRID_CELL_TYPE.EMPTY, elem: null}); // empty space
                 }
             }
             grid.push(row);
@@ -107,7 +107,7 @@ export class Arena {
         const elemBounds = elem.getBounds();
         for (let rowIndex = 0; rowIndex < this.rowsCount; rowIndex++) {
             for (let colIndex = 0; colIndex < this.colsCount; colIndex++) {
-                if (this.grid[rowIndex][colIndex].type !== this.GRID_CELL_TYPE.WALL) {
+                if (this.grid[rowIndex][colIndex].type !== Arena.GRID_CELL_TYPE.WALL) {
                     continue;
                 }
                 const wall = this.grid[rowIndex][colIndex].elem;
@@ -134,7 +134,7 @@ export class Arena {
     randomEmptySpace() {
         let rowIndex = Math.floor(Math.random() * this.rowsCount);
         let colIndex = Math.floor(Math.random() * this.colsCount);
-        while (this.grid[rowIndex][colIndex].type === this.GRID_CELL_TYPE.WALL) {
+        while (this.grid[rowIndex][colIndex].type === Arena.GRID_CELL_TYPE.WALL) {
             rowIndex = Math.floor(Math.random() * this.rowsCount);
             colIndex = Math.floor(Math.random() * this.colsCount);
         }
@@ -154,7 +154,7 @@ export class Arena {
         for (let rowIndex = 0; rowIndex < this.rowsCount; rowIndex++) {
             for (let colIndex = 0; colIndex < this.colsCount; colIndex++) {
                 const { x, y, cellWidth, cellHeight } = this.gridToCanvas(colIndex, rowIndex);
-                if (this.grid[rowIndex][colIndex].type === this.GRID_CELL_TYPE.WALL) {
+                if (this.grid[rowIndex][colIndex].type === Arena.GRID_CELL_TYPE.WALL) {
                     let elem = new PIXI.Sprite(this.textures.wall);
                     elem.width = cellWidth;
                     elem.height = cellHeight;

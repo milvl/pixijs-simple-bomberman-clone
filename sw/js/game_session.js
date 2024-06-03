@@ -8,6 +8,8 @@ import { Player } from "./graphic_elements/player.js";
 import { Bomb } from "./graphic_elements/bomb.js";
 import { Explosion } from "./graphic_elements/explosion.js";
 import { BreakableWall } from "./graphic_elements/breakable_wall.js";
+import { SCORES } from "./constants/scores.js";
+import { ENDLESS_MODE_SETTINGS } from "./constants/endless_mode_settings.js";
 // import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
@@ -42,12 +44,10 @@ const INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES = 4;
 const INDEX_SCREEN_CONTENT_INFO_SCREEN_BACKGROUND = 0;
 const INDEX_SCREEN_CONTENT_INFO_SCREEN_TEXT = 1;
 
-const MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT = 0.11;
-
 const EASTER_EGG_TIME = 359990000; // 59 minutes 59 seconds
 
-const WALL_SCORE_VALUE = 10;
-const ENEMY_SCORE_VALUE = 100;
+const WALL_SCORE_VALUE = SCORES.BREAKABLE_WALL;
+const ENEMY_SCORE_VALUE = SCORES.ENEMY;
 
 /**
  * Parses milliseconds into a time string.
@@ -163,8 +163,6 @@ export class GameSessionManager {
         // settings
         this.gameSessionState = null;
         this.livesLeft = settings.lives;
-        // this.movementSpeed = 85;
-        this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
         this.levelsConfig = null;
         this.level = 1;
 
@@ -528,7 +526,99 @@ export class GameSessionManager {
             this.screenContent.player.spawn(x, y);
         }
         else {
-            // TODO randomize (endless mode)
+            // player always in the middle
+            const { x, y } = this.screenContent.arena.gridToCanvas(Math.floor(this.screenContent.arena.colsCount / 2), Math.floor(this.screenContent.arena.rowsCount / 2));
+            this.screenContent.player = new Player(this.app, this.screenContent.arena, this.textures.player, SCALE_PLAYER_TO_WALL, this.playerMovementTextures);
+            this.screenContent.player.spawn(x, y);
+
+            // put breakable walls inside the player's position and one around the player
+            // this is to ensure that randomly spawned enemies/breakable walls will not be able to reach the player immediately
+            // they will be removed when the random enemies/breakable walls are spawned
+            const toRemove = [];
+            const { x: playerGridX, y: playerGridY } = this.screenContent.arena.canvasToGrid(x, y);
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const { x: wallX, y: wallY } = this.screenContent.arena.gridToCanvas(playerGridX + i, playerGridY + j);
+                    let breakableWall = new BreakableWall(this.app, this.screenContent.arena, this.textures.break_wall);
+                    breakableWall.spawn(wallX, wallY);
+                    this.screenContent.breakableWalls.push(breakableWall);
+                    toRemove.push(breakableWall);
+                }
+            }
+
+            // randomize breakable walls count and enemy count
+            const breakableWallsCount = Math.floor(Math.random() * ENDLESS_MODE_SETTINGS.MAX_BREAKABLE_WALLS) + 1;
+            const enemiesCount = Math.floor(Math.random() * ENDLESS_MODE_SETTINGS.MAX_ENEMIES) + 1;
+
+            // randomize breakable walls
+            for (let i = 0; i < breakableWallsCount; i++) {
+                let gridX = Math.floor(Math.random() * this.screenContent.arena.colsCount);
+                let gridY = Math.floor(Math.random() * this.screenContent.arena.rowsCount);
+                let placed = false;
+                while (!placed) {
+                    let foundSpace = true;
+                    for (let wall of this.screenContent.breakableWalls) {
+                        let { gridX: placedWallGridX, gridY: placedWallGridY } = wall.gridPosition;
+                        if (gridX === placedWallGridX && gridY === placedWallGridY || this.screenContent.arena.grid[gridY][gridX].type === Arena.GRID_CELL_TYPE.WALL) {
+                            gridX = Math.floor(Math.random() * this.screenContent.arena.colsCount);
+                            gridY = Math.floor(Math.random() * this.screenContent.arena.rowsCount);
+                            foundSpace = false;
+                            break;
+                        }
+                    }
+                    if (!foundSpace) {
+                        continue;
+                    }
+
+                    const { x: wallX, y: wallY } = this.screenContent.arena.gridToCanvas(gridX, gridY);
+                    let breakableWall = new BreakableWall(this.app, this.screenContent.arena, this.textures.break_wall);
+                    breakableWall.spawn(wallX, wallY);
+                    this.screenContent.breakableWalls.push(breakableWall);
+                    placed = true;
+                }
+                
+            }
+
+            // randomize enemies
+            for (let i = 0; i < enemiesCount; i++) {
+                let gridX = Math.floor(Math.random() * this.screenContent.arena.colsCount);
+                let gridY = Math.floor(Math.random() * this.screenContent.arena.rowsCount);
+                let placed = false;
+                while (!placed) {
+                    let foundSpace = true;
+                    for (let wall of this.screenContent.breakableWalls) {
+                        let { gridX: placedWallGridX, gridY: placedWallGridY } = wall.gridPosition;
+                        if (gridX === placedWallGridX && gridY === placedWallGridY || this.screenContent.arena.grid[gridY][gridX].type === Arena.GRID_CELL_TYPE.WALL) {
+                            gridX = Math.floor(Math.random() * this.screenContent.arena.colsCount);
+                            gridY = Math.floor(Math.random() * this.screenContent.arena.rowsCount);
+                            foundSpace = false;
+                            break;
+                        }
+                    }
+                    if (!foundSpace) {
+                        continue;
+                    }
+
+                    const { x: enemyX, y: enemyY } = this.screenContent.arena.gridToCanvas(gridX, gridY);
+                    const enemyObj = new Enemy(this.app, this.screenContent.arena, this.textures.ghost01, SCALE_ENEMY_TO_WALL, this.enemyTextures);
+                    enemyObj.spawn(enemyX, enemyY);
+                    this.screenContent.enemies.push(enemyObj);
+                    placed = true;
+                
+                }
+            }
+
+            // remove the breakable walls that were placed around the player
+            for (let wall of toRemove) {
+                wall.remove();
+                this.screenContent.breakableWalls.splice(this.screenContent.breakableWalls.indexOf(wall), 1);
+            }
+
+            // debug breakable wall
+            let breakableWall = new BreakableWall(this.app, this.screenContent.arena, this.textures.break_wall);
+            const { x: wallX, y: wallY } = this.screenContent.arena.gridToCanvas(1, 1);
+            breakableWall.spawn(wallX, wallY);
+            this.screenContent.breakableWalls.push(breakableWall);
         }
     }
 
@@ -785,16 +875,20 @@ export class GameSessionManager {
             if (playerBounds.x >= doorBounds.x && playerBounds.x + playerBounds.width <= doorBounds.x + doorBounds.width &&
                 playerBounds.y >= doorBounds.y && playerBounds.y + playerBounds.height <= doorBounds.y + doorBounds.height) {
                 // player entered door
-                // remove the config from the list
-                this.levelsConfig.splice(0, 1);
-                if (this.levelsConfig.length === 0) {
-                    this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
-                    this.#cleanUpKeyInputs();
-                    return;
+
+                if (!this.endless) {
+                    // remove the config from the list
+                    this.levelsConfig.splice(0, 1);
+                    if (this.levelsConfig.length === 0) {
+                        this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
+                        this.#cleanUpKeyInputs();
+                        return;
+                    }
                 }
                 this.level += 1;
                 this.#cleanUpKeyInputs();
                 this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN);
+            
             }
 
         }
@@ -1112,7 +1206,6 @@ export class GameSessionManager {
         this.prevWidth = this.app.screen.width;
         this.prevHeight = this.app.screen.height;
         this.prevScreenSize = {width: this.app.screen.width, height: this.app.screen.height};
-        this.movementSpeed = this.app.screen.height * MOVEMENT_SPEED_SCALE_FACTOR_TO_HEIGHT;
         this.basisChange = false;
     }
 

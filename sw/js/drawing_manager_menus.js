@@ -22,9 +22,10 @@ function getStringWithSafeMargin(text) {
 * @param {Number} maxWidth - The maximum width of the text.
 * @param {Number} maxHeight - The maximum height of the text.
 * @param {String} fontFamily - The font family to use.
+* @param {String} alignment - The alignment of the text.
 * @returns {Number} The font size that fits the text scale.
 */
-function getFontSize(textString, maxWidth, maxHeight, fontFamily = 'Arial') {
+function getFontSize(textString, maxWidth, maxHeight, fontFamily = 'Arial', alignment = 'left') {
    let fontSize = 1;
    let text = new PIXI.Text({text: textString, style: {
        fontFamily: fontFamily,
@@ -385,6 +386,137 @@ export class SettingsDrawingManager {
 
     /**
      * Destroys the settings.
+     */
+    cleanUp() {
+        this.app.stage.removeChildren();
+    }
+}
+
+/**
+ * Handles the drawing of the end game screen.
+ */
+export class EndGameDrawingManager {
+    TITLE_HEIGHT_SCALE = 2/5;
+    NAME_STRING_HEIGHT_SCALE = 1/5;
+    SCALE_FONT_WIDTH_WEIRDNESS = 0.85;  // weirdness factor to make font fit better (it contains some empty space after each letter)
+
+    constructor(app, textures, screenContent) {
+        this.app = app;
+        this.textures = textures;
+        this.screenContent = screenContent;
+    }
+
+    /**
+     * Draws the background of the end game screen.
+     */
+    #drawBackground() {
+        const background = new PIXI.Graphics();
+        background.rect(0, 0, this.app.screen.width, this.app.screen.height);
+        background.fill(HEX_COLOR_CODES.BLACK);
+        this.app.stage.addChild(background);
+    }
+
+    /**
+     * Draws the title and user input for name entry.
+     */
+    #drawTitleAndInput() {
+        const title = this.screenContent.title;
+        const titleFontSize = getFontSize(title, this.app.screen.width, this.app.screen.height * this.TITLE_HEIGHT_SCALE, TITLE_FONT_FAMILY);
+
+        // Title Text
+        let titleText = new PIXI.Text(title, {
+            fontFamily: TITLE_FONT_FAMILY,
+            fontSize: titleFontSize,
+            fill: HEX_COLOR_CODES.WHITE,
+            align: 'center'
+        });
+        titleText.x = (this.app.screen.width / 2) - (titleText.width / 2);
+        titleText.y = titleText.height / 4; // some margin from the top
+        this.app.stage.addChild(titleText);
+
+        // input Area
+        this.#drawInputArea(titleText.y + titleText.height + titleText.height / 4); // some margin below the title
+    }
+
+    /**
+     * Draws the area where players can enter their names.
+     */
+    #drawInputArea(startY) {
+        // get current string of all 3 chars from screenContent
+        const dummyString = this.screenContent.options.reduce((a, b) => a + b.letter, '');
+        const dummyStringSelected = this.screenContent.options[this.screenContent.selected].letter;
+        const fontSize = getFontSize(dummyString, this.app.screen.width, this.app.screen.height * this.NAME_STRING_HEIGHT_SCALE, TEXT_FONT_FAMILY);
+
+        const dummyText = new PIXI.Text(dummyString, {
+            fontFamily: TEXT_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.WHITE,
+            align: 'center'
+        });
+
+        const dummyTextSelected = new PIXI.Text(dummyStringSelected, {
+            fontFamily: TEXT_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.WHITE,
+            align: 'center'
+        });
+
+        const nameInputX = ((this.app.screen.width - dummyText.width) / 2);
+
+        // upper cursor
+        let cursor = new PIXI.Graphics();
+        cursor.drawPolygon([0, 0, 
+                            dummyTextSelected.width * this.SCALE_FONT_WIDTH_WEIRDNESS, 0,
+                            dummyTextSelected.width * this.SCALE_FONT_WIDTH_WEIRDNESS / 2, dummyText.height / 4]);
+        cursor.fill(HEX_COLOR_CODES.WHITE);
+        cursor.x = nameInputX + this.screenContent.selected * (dummyText.width / dummyString.length);
+        cursor.y = startY;
+        this.app.stage.addChild(cursor);
+
+
+        // drawing each letter in the name
+        this.screenContent.options.forEach((option, index) => {
+            let letterX = nameInputX + (index * dummyText.width / dummyString.length);
+            let letter = new PIXI.Text(option.letter, {
+                fontFamily: TEXT_FONT_FAMILY,
+                fontSize: fontSize,
+                fill: HEX_COLOR_CODES.WHITE,
+                align: 'center'
+            });
+            letter.x = letterX;
+            letter.y = startY + cursor.height + cursor.height / 2;
+            this.app.stage.addChild(letter);
+        });
+
+        // lower cursor
+        cursor = new PIXI.Graphics();
+        cursor.drawPolygon([dummyTextSelected.width * this.SCALE_FONT_WIDTH_WEIRDNESS / 2, 0,
+                            0, dummyText.height / 4,
+                            dummyTextSelected.width * this.SCALE_FONT_WIDTH_WEIRDNESS, dummyText.height / 4]);
+        cursor.fill(HEX_COLOR_CODES.WHITE);
+        cursor.x = nameInputX + this.screenContent.selected * (dummyText.width / dummyString.length);
+        cursor.y = startY + cursor.height + cursor.height / 2 + dummyText.height 
+        this.app.stage.addChild(cursor);
+    }
+
+    /**
+     * Main method to draw the entire end game screen.
+     */
+    draw() {
+        this.#drawBackground();
+        this.#drawTitleAndInput();
+    }
+
+    /**
+     * Redraws the end game screen.
+     */
+    redraw() {
+        this.app.stage.removeChildren();
+        this.draw();
+    }
+
+    /**
+     * Cleans up the end game screen.
      */
     cleanUp() {
         this.app.stage.removeChildren();
