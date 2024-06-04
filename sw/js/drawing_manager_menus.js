@@ -523,3 +523,183 @@ export class EndGameDrawingManager {
         this.app.stage.removeChildren();
     }
 }
+
+export class LeaderboardsDrawingManager {
+    TITLE_WIDTH_SCALE = 1/2;
+    TITLE_HEIGHT_SCALE = 1/5;
+    TITLE_Y_OFFSET_SCALE = 1/10;
+    LEADERBOARD_ENTRY_HEIGHT_SCALE = 1/20;
+    LEADERBOARD_ENTRY_GAP_SCALE = 1/40;
+    WAIT_SIGN_STRING = 'Loading...';
+    WAIT_SIGN_HEIGHT_TO_SCREEN_HEIGHT_SCALE = 1/4;
+    WAIT_SIGN_WIDTH_TO_SCREEN_WIDTH_SCALE = 1/2;
+
+    constructor(app, textures, screenContent) {
+        this.app = app;
+        this.textures = textures;
+        this.screenContent = screenContent;
+    }
+
+    #drawBackground() {
+        const background = new PIXI.Graphics();
+        background.rect(0, 0, this.app.screen.width, this.app.screen.height);
+        background.fill(HEX_COLOR_CODES.BLACK);
+        this.app.stage.addChild(background);
+    }
+
+    #drawTitle() {
+        const titleString = getStringWithSafeMargin(this.screenContent.title);
+        const titleRect = new PIXI.Graphics();
+        const x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_SCALE)) / 2;
+        const y = this.app.screen.height * this.TITLE_Y_OFFSET_SCALE;
+        const titleRectWidth = this.app.screen.width * this.TITLE_WIDTH_SCALE;
+        const titleRectHeight = this.app.screen.height * this.TITLE_HEIGHT_SCALE;
+        const fontSize = getFontSize(titleString, titleRectWidth, titleRectHeight, TITLE_FONT_FAMILY);
+        titleRect.rect(x, y, titleRectWidth, titleRectHeight);
+        titleRect.fill(HEX_COLOR_CODES.WHITE);
+        this.app.stage.addChild(titleRect);
+    }
+
+    #drawWaitSign() {
+        const invisibleRect = new PIXI.Graphics();
+        const x = (this.app.screen.width - (this.app.screen.width * this.WAIT_SIGN_WIDTH_TO_SCREEN_WIDTH_SCALE)) / 2;
+        const y = (this.app.screen.height - (this.app.screen.height * this.WAIT_SIGN_HEIGHT_TO_SCREEN_HEIGHT_SCALE)) / 2;
+        const invisibleRectWidth = this.app.screen.width * this.WAIT_SIGN_WIDTH_TO_SCREEN_WIDTH_SCALE;
+        const invisibleRectHeight = this.app.screen.height * this.WAIT_SIGN_HEIGHT_TO_SCREEN_HEIGHT_SCALE;
+        invisibleRect.rect(x, y, invisibleRectWidth, invisibleRectHeight);
+        invisibleRect.fill(HEX_COLOR_CODES.BLACK);
+        this.app.stage.addChild(invisibleRect);
+
+        const fontSize = getFontSize(this.WAIT_SIGN_STRING, invisibleRectWidth, invisibleRectHeight, TEXT_FONT_FAMILY);
+        const waitSignText = new PIXI.Text(this.WAIT_SIGN_STRING, {
+            fontFamily: TEXT_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.WHITE,
+            align: 'center'
+        });
+        waitSignText.x = x + (invisibleRectWidth / 2) - (waitSignText.width / 2);
+        waitSignText.y = y + (invisibleRectHeight / 2) - (waitSignText.height / 2);
+        this.app.stage.addChild(waitSignText);
+    }
+
+    drawWait() {
+        this.#drawBackground();
+        this.#drawWaitSign();
+    }
+
+    draw() {
+        // TODO here
+    }
+
+    redraw() {
+    }
+
+    cleanUp() {
+    }
+}
+
+// Leaderboards:
+// {"endless":{"0":[{"lives":0,"mode":"endless","name":"203","score":400,"time":16080.68},{"level":10,"lives":0,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":0,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":0,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":0,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"III","score":30,"time":60000}],"1":[{"level":10,"lives":1,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":1,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":1,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":1,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"III","score":30,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"JJJ","score":20,"time":60000}],"2":[{"level":10,"lives":2,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":2,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":2,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":2,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"III","score":30,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"JJJ","score":20,"time":60000}],"3":[{"level":10,"lives":3,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":3,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":3,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":3,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"III","score":30,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"JJJ","score":20,"time":60000}]},"normal":{"0":[{"level":10,"lives":0,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":0,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":0,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":0,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"JJJ","score":20,"time":60000}],"1":[{"level":10,"lives":1,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":1,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":1,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":1,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"JJJ","score":20,"time":60000}],"2":[{"level":10,"lives":2,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":2,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":2,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":2,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"JJJ","score":20,"time":60000}],"3":[{"level":10,"lives":3,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":3,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":3,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":3,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"JJJ","score":20,"time":60000}]}}
+// /**
+//      * Sets up the keys for the leaderboards screen.
+//      */
+// #setupLeaderboardsKeys() {
+//     const changeModeFunc = () => {
+//         this.screenContent.optionsValues[0] = this.screenContent.optionsValues[0] === 'Normal' ? 'Endless' : 'Normal';
+//         this.soundManager.playCursor();
+//         this.screenContent.updated = true;
+//     }
+    
+//     this.keyInputs.up.press = () => {
+//         if (!this.keyInputs.down.isDown) {
+//             changeModeFunc();
+//         }
+//     }
+
+//     this.keyInputs.down.press = () => {
+//         if (!this.keyInputs.up.isDown) {
+//             changeModeFunc();
+//         }
+//     }
+
+//     const changeLivesFunc = (delta) => {
+//         this.screenContent.optionsValues[1] = mod(this.screenContent.optionsValues[1] + delta, 4);
+//         this.soundManager.playCursor();
+//         this.screenContent.updated = true;
+//     }
+
+//     this.keyInputs.left.press = () => {
+//         changeLivesFunc(-1);
+//     }
+
+//     this.keyInputs.right.press = () => {
+//         changeLivesFunc(1);
+//     }
+
+//     const returnToMainMenuFunc = () => {
+//         this.#cleanUpMenu();
+//         this.drawingManager.cleanUp();
+//         this.drawingManager = null;
+//         this.screenContent = null;
+//         this.gameState.switchState(GAME_STATES.MAIN_MENU);
+//         this.soundManager.playCursorSubmit();
+//     }
+
+//     this.keyInputs.enter.press = () => {
+//         returnToMainMenuFunc();
+//     }
+
+//     this.keyInputs.escape.press = () => {
+//         returnToMainMenuFunc();
+//     }
+// }
+
+// /**
+//  * Initializes the leaderboards.
+//  */
+// #initLeaderboards() {
+//     this.screenContent = JSON.parse(JSON.stringify(DEFAULT_LEADERBOARDS_CONTENT));
+//     $.ajax({
+//         url: "/api/scores",
+//         type: "GET",
+//         success: (response) => {
+//             console.log(MODULE_NAME_PREFIX, 'Leaderboards:', response);
+//             this.screenContent.leaderboards = response;
+//             this.screenContent.ready = true;
+//         },
+//         error: (xhr, status, error) => {
+//             console.error(MODULE_NAME_PREFIX, 'Error:', error);
+//         }
+//     });
+
+//     this.#setupLeaderboardsKeys();
+// }
+
+// /**
+//  * Handles updating the leaderboards.
+//  */
+// #handleLeaderboardsUpdate() {
+//     if (this.screenContent === null) {
+//         this.#initLeaderboards();
+//     }
+//     if (this.drawingManager === null) {
+//         this.drawingManager = new LeaderboardsDrawingManager(this.app, this.textures, this.screenContent);
+        
+//         // if the leaderboards are not ready, draw the wait screen
+//         if (!this.screenContent.ready) {
+//             this.drawingManager.drawWait();
+//         }
+//     }
+
+//     // if the leaderboards are ready, draw them
+//     if (this.screenContent.ready && !this.screenContent.updated) {
+//         this.drawingManager.draw();
+//         this.screenContent.updated = false;
+//     }
+
+//     // if the leaderboards are ready and updated, redraw them
+//     if (this.screenContent.ready && this.screenContent.updated) {
+//         this.drawingManager.redraw();
+//         this.screenContent.updated = false;
+//     }
+// }

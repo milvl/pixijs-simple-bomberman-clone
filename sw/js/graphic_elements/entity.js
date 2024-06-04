@@ -57,6 +57,14 @@ export class Entity {
         this.elem.width = wallWidth * this.scaleToWall;
         this.elem.height = wallHeight * this.scaleToWall;
 
+        // if entity scalling is negative, force it to be positive (to avoid spawning issues)
+        if (this.elem.scale.x < 0) {
+            this.elem.scale.x *= -1;
+        }
+        if (this.elem.scale.y < 0) {
+            this.elem.scale.y *= -1;
+        }
+        
         let { x, y } = { x: null, y: null };
         if (start_x !== null && start_y !== null) {
             x = start_x;

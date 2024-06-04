@@ -1,6 +1,7 @@
+import $ from 'jquery';
 import * as PIXI from 'pixi.js';
 import { GameState, GAME_STATES } from "./game_states.js";
-import { MainMenuDrawingManager, SettingsDrawingManager, EndGameDrawingManager } from "./drawing_manager_menus.js";
+import { MainMenuDrawingManager, SettingsDrawingManager, EndGameDrawingManager, LeaderboardsDrawingManager } from "./drawing_manager_menus.js";
 import { GameSessionManager } from "./game_session.js";
 
 const MODULE_NAME_PREFIX = 'game.js - ';
@@ -59,6 +60,27 @@ const DEFAULT_GAME_END_CONTENT = {
 };
 
 const AVAILIBLE_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+const DEFAULT_LEADERBOARDS_CONTENT = {
+    updated: false,
+    ready: false,
+    title: 'Leaderboards',
+    options: [
+        'Mode: ',
+        'Lives: ',
+    ],
+    optionsValues: [
+        'Normal',
+        3,
+    ],
+    header: [
+        'Rank',
+        'Name',
+        'Level',
+        'Score',
+        'Time',
+    ],
+};
 
 /**
  * Returns the modulo of two numbers.
@@ -160,8 +182,7 @@ export class Game {
                         this.screenContent.submited = this.screenContent.selected;
                         break;
                     case 2:
-                        // TODO this.screenContent.submited = this.screenContent.selected;
-                        alert('Leaderboards are disabled for this demo.');
+                        this.screenContent.submited = this.screenContent.selected;
                         break;
                     default:
                         console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
@@ -236,7 +257,6 @@ export class Game {
         }
         if (this.drawingManager.ended === true) {
             this.drawingManager.cleanUp();
-            let stats = this.drawingManager.stats;
 
             // user left the game
             if (this.drawingManager.userLeave === true) {
@@ -249,12 +269,14 @@ export class Game {
             }
             // game ended with a win or loss
             else {
+                this.recievedStats = this.drawingManager.stats;
+                this.recievedStats.lives = this.settings.lives;
+                this.recievedStats.mode = this.settings.endless ? 'endless' : 'normal';
                 this.drawingManager = null;
                 if (this.screenContent.nullable === true) {
                     this.screenContent = null;
                 }
 
-                this.recievedStats = stats;
                 this.gameState.switchState(GAME_STATES.GAME_END);
             }
         }
@@ -351,6 +373,113 @@ export class Game {
         }
     }
 
+    /**
+     * Sets up the keys for the leaderboards screen.
+     */
+    #setupLeaderboardsKeys() {
+        const changeModeFunc = () => {
+            this.screenContent.optionsValues[0] = this.screenContent.optionsValues[0] === 'Normal' ? 'Endless' : 'Normal';
+            this.soundManager.playCursor();
+            this.screenContent.updated = true;
+        }
+        
+        this.keyInputs.up.press = () => {
+            if (!this.keyInputs.down.isDown) {
+                changeModeFunc();
+            }
+        }
+
+        this.keyInputs.down.press = () => {
+            if (!this.keyInputs.up.isDown) {
+                changeModeFunc();
+            }
+        }
+
+        const changeLivesFunc = (delta) => {
+            this.screenContent.optionsValues[1] = mod(this.screenContent.optionsValues[1] + delta, 4);
+            this.soundManager.playCursor();
+            this.screenContent.updated = true;
+        }
+
+        this.keyInputs.left.press = () => {
+            changeLivesFunc(-1);
+        }
+
+        this.keyInputs.right.press = () => {
+            changeLivesFunc(1);
+        }
+
+        const returnToMainMenuFunc = () => {
+            this.#cleanUpMenu();
+            this.drawingManager.cleanUp();
+            this.drawingManager = null;
+            this.screenContent = null;
+            this.gameState.switchState(GAME_STATES.MAIN_MENU);
+            this.soundManager.playCursorSubmit();
+        }
+
+        this.keyInputs.enter.press = () => {
+            returnToMainMenuFunc();
+        }
+
+        this.keyInputs.esc.press = () => {
+            returnToMainMenuFunc();
+        }
+    }
+
+    /**
+     * Initializes the leaderboards.
+     */
+    #initLeaderboards() {
+        this.screenContent = JSON.parse(JSON.stringify(DEFAULT_LEADERBOARDS_CONTENT));
+        $.ajax({
+            url: "/api/scores",
+            type: "GET",
+            success: (response) => {
+                console.log(MODULE_NAME_PREFIX, 'Leaderboards:', response);
+                this.screenContent.leaderboards = response;
+                this.screenContent.ready = true;
+            },
+            error: (xhr, status, error) => {
+                console.error(MODULE_NAME_PREFIX, 'Error:', error);
+            }
+        });
+
+        this.#setupLeaderboardsKeys();
+    }
+
+    /**
+     * Handles updating the leaderboards.
+     */
+    #handleLeaderboardsUpdate() {
+        if (this.screenContent === null) {
+            this.#initLeaderboards();
+        }
+        if (this.drawingManager === null) {
+            this.drawingManager = new LeaderboardsDrawingManager(this.app, this.textures, this.screenContent);
+            
+            // if the leaderboards are not ready, draw the wait screen
+            if (!this.screenContent.ready) {
+                this.drawingManager.drawWait();
+            }
+        }
+
+        // if the leaderboards are ready, draw them
+        if (this.screenContent.ready && !this.screenContent.updated) {
+            this.drawingManager.draw();
+            this.screenContent.updated = false;
+        }
+
+        // if the leaderboards are ready and updated, redraw them
+        if (this.screenContent.ready && this.screenContent.updated) {
+            this.drawingManager.redraw();
+            this.screenContent.updated = false;
+        }
+    }
+
+    /**
+     * Sets up the keys for the game end screen.
+     */
     #setupGameEndKeys() {
         this.keyInputs.up.press = () => {
             if (!this.keyInputs.down.isDown) {
@@ -379,20 +508,48 @@ export class Game {
             this.screenContent.updated = true;
         }
         this.keyInputs.enter.press = () => {
+            // get the name from the selected letters
             let name = '';
             for (let i = 0; i < this.screenContent.options.length; i++) {
                 name += this.screenContent.options[i].letter;
             }
             this.screenContent.submited = name;
             console.log(MODULE_NAME_PREFIX, 'Submited name:', this.screenContent.submited);
-            alert('Score submission is disabled for this demo. Thanks for playing!');
-            this.submitScore = true; // TODO: implement score submission
+            
+            // prepare the post object
+            const post = {
+                name: this.screenContent.submited,
+                score: this.recievedStats.score,
+                time: this.recievedStats.time,
+                lives: this.recievedStats.lives,
+                mode: this.recievedStats.mode,
+            };
+            
+            // submit the stats to the server
+            console.log(MODULE_NAME_PREFIX, 'Submitting:', post);
+            $.ajax({
+                // current url
+                url: "/api/submit_score", 
+                type: "POST",
+                data: JSON.stringify(post),
+                contentType: "application/json",
+                success: function(response) {
+                    console.log(MODULE_NAME_PREFIX, 'Response:', response);
+                },
+                error: function(xhr, status, error) {
+                    console.error(MODULE_NAME_PREFIX, 'Error:', error);
+                }
+            });
+            
             this.#cleanUpMenu();
+            this.drawingManager.cleanUp();
             this.gameState.switchState(GAME_STATES.MAIN_MENU);
         }
-       
     }
 
+    /**
+     * Handles the game end screen.
+     */
     #handleGameEndScreen() {
         if (this.screenContent === null) {
             // create copy of the default content
@@ -435,8 +592,8 @@ export class Game {
                 this.#handleSettingsUpdate();
                 break;
             case GAME_STATES.LEADERBOARDS:
-                console.error(MODULE_NAME_PREFIX, 'Leaderboards to be implemented.');
-                throw new Error('Leaderboards to be implemented.');
+                this.#handleLeaderboardsUpdate();
+                break;
             case GAME_STATES.GAME_END:
                 this.#handleGameEndScreen();
                 break;
