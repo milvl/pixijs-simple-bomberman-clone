@@ -1,4 +1,4 @@
-// import * as PIXI from 'pixi.js';
+import * as PIXI from 'pixi.js';
 import { GameState, GAME_STATES } from "./game_states.js";
 import { MainMenuDrawingManager, SettingsDrawingManager, EndGameDrawingManager } from "./drawing_manager_menus.js";
 import { GameSessionManager } from "./game_session.js";
@@ -385,6 +385,7 @@ export class Game {
             }
             this.screenContent.submited = name;
             console.log(MODULE_NAME_PREFIX, 'Submited name:', this.screenContent.submited);
+            alert('Score submission is disabled for this demo. Thanks for playing!');
             this.submitScore = true; // TODO: implement score submission
             this.#cleanUpMenu();
             this.gameState.switchState(GAME_STATES.MAIN_MENU);

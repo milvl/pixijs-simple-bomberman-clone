@@ -2,11 +2,14 @@
   "name": "uur_bomberman_clone",
   "version": "1.0.0",
   "description": "A semestral work for KIV/UUR",
+  "source": "index.html",
   "scripts": {
     "quickstart": "http-server",
+    "quickstart-build": "http-server dist",
     "clean": "rm -rf dist",
-    "start": "npm run clean && mkdir dist && cp -r img dist && cp -r audio dist && cp -r fonts dist && parcel index.html",
-    "build": "npm run clean && mkdir dist && cp -r img dist && cp -r audio dist && cp -r fonts dist && parcel build index.html",
+    "start": "npm run clean && mkdir dist && cp -r img dist && cp -r audio dist && cp -r fonts dist && cp favicon.ico dist && parcel index.html",
+    "build-dev": "npm run clean && mkdir dist && cp -r img dist && cp -r audio dist && cp -r fonts dist && cp favicon.ico dist && parcel build index.html",
+    "build": "npm run clean && mkdir dist && cp -r img dist && cp -r audio dist && cp -r fonts dist && cp favicon.ico dist && parcel build index.html --no-source-maps",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Milan Vlachovsky (mvlach@students.zcu.cz)",

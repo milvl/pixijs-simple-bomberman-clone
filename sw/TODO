@@ -8,5 +8,8 @@
 - left, right, arrow keys to change menu options
 - start game with level info
 - show controls
+- bigger enemy sprites
+- score sound
+
 - player weird random spawn (due to negative scaling)
-- p not working with caps lock
+- 'p' not working with caps lock

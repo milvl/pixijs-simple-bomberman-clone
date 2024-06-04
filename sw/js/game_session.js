@@ -1,4 +1,4 @@
-// import * as PIXI from 'pixi.js';
+import * as PIXI from 'pixi.js';
 import { HEX_COLOR_CODES } from "./constants/color_codes.js";
 import { GameSessionState } from "./game_session_states.js";
 import { LEVELS } from "./levels_config.js";

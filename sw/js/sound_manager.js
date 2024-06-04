@@ -1,5 +1,5 @@
-// import * as PIXI from 'pixi.js';
-// import { sound } from '@pixi/sound';
+import * as PIXI from 'pixi.js';
+import { sound } from '@pixi/sound';
 
 const MODULE_NAME_PREFIX = 'sound_manager.js - ';
 

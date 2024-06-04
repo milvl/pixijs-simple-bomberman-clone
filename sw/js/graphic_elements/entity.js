@@ -1,4 +1,4 @@
-// import * as PIXI from 'pixi.js';
+import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'entity.js - ';
 

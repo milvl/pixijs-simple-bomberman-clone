@@ -1,5 +1,5 @@
-// import * as PIXI from 'pixi.js';
-// import $ from 'jquery';
+import * as PIXI from 'pixi.js';
+import $ from 'jquery';
 import loadAssetsManifest from './loader.js';
 import { Game } from './game.js';
 import { SoundManager } from './sound_manager.js';

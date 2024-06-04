@@ -1,4 +1,4 @@
-// import * as PIXI from 'pixi.js';
+import * as PIXI from 'pixi.js';
 import { Entity } from './entity.js';
 
 const MODULE_NAME_PREFIX = 'breakable_wall.js - ';
