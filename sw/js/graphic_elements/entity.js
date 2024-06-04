@@ -1,3 +1,5 @@
+// import * as PIXI from 'pixi.js';
+
 const MODULE_NAME_PREFIX = 'entity.js - ';
 
 /**
@@ -55,21 +57,13 @@ export class Entity {
         this.elem.width = wallWidth * this.scaleToWall;
         this.elem.height = wallHeight * this.scaleToWall;
 
-        // if entity scalling is negative, force it to be positive (to avoid spawning issues)
-        // TODO remove for testing xd
-        if (this.elem.scale.x < 0) {
-            this.elem.scale.x *= -1;
-        }
-        if (this.elem.scale.y < 0) {
-            this.elem.scale.y *= -1;
-        }
-
         let { x, y } = { x: null, y: null };
         if (start_x !== null && start_y !== null) {
             x = start_x;
             y = start_y;
         } else {
-            ({ x, y } = this.arena.randomEmptySpace()); // TODO check if this is working
+            console.warn(MODULE_NAME_PREFIX, 'Spawning entity at random empty space. Not garranted to not collide with other entities.');
+            ({ x, y } = this.arena.randomEmptySpace());
         }
         this.elem.x = x + (wallWidth - this.elem.width) / 2;
         this.elem.y = y + (wallHeight - this.elem.height) / 2;

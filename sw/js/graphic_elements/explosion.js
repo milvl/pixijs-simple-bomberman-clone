@@ -1,3 +1,4 @@
+// import * as PIXI from 'pixi.js';
 import { Arena } from './arena.js';
 import { Entity } from './entity.js';
 import { DURATIONS } from '/js/constants/durations.js';
@@ -40,7 +41,6 @@ export class Explosion {
      */
     get isFinished() {
         return this._isFinished;
-        // TODO REMOVE
     }
 
     /**

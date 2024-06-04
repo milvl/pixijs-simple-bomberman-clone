@@ -1,4 +1,5 @@
 // import * as PIXI from 'pixi.js';
+// import $ from 'jquery';
 import loadAssetsManifest from './loader.js';
 import { Game } from './game.js';
 import { SoundManager } from './sound_manager.js';
@@ -222,15 +223,16 @@ function keyboard(value) {
 
 /**
  * Setup function that prepares the data and configuration for the game.
+ * @param {PIXI.Application} app - The PIXI application to setup.
  */
-async function setup() {
+async function setup(app) {
     console.log('Setting up game...');
 
     // prepare game assets
     try {
         await prepareGameAssets(TEXTURES, SOUND_MANAGER);
     } catch (error) {
-        console.error(MODULE_NAME_PREFIX, 'Failed to load textures:', error);;
+        console.error(MODULE_NAME_PREFIX, 'Failed to load assets:', error);;
     }
 
     // setup keyboard input
@@ -242,72 +244,46 @@ async function setup() {
     KEY_INPUTS.enter = keyboard("Enter");
     KEY_INPUTS.esc = keyboard("Escape");
     KEY_INPUTS.pause = keyboard("p");
-}
 
-export function debugPrintGameState() {
-    game.gameState.printGameState();
-}
+    const windowChange = {
+        resized: false
+    };
 
-export function debugPrintGame() {
+    // prompt the user to click to start the game (audio context)
+    try {
+        await app.init(PIXI_INIT_CONFIG);
+    }
+    catch (error) {
+        console.error(MODULE_NAME_PREFIX, 'Failed to initialize PIXI application:', error);
+    }
+    
+    // mouse click debug
+    // app.view.addEventListener('click', (event) => {
+    //     // Get the bounding rectangle of the canvas
+    //     const rect = app.view.getBoundingClientRect();
+    
+    //     // Calculate the mouse position relative to the canvas
+    //     const x = event.clientX - rect.left;
+    //     const y = event.clientY - rect.top;
+    
+    //     // Log the coordinates
+    //     console.log(`Mouse click at canvas coords: (${x}, ${y})`);
+    // });
+    
+    // add the canvas to "game" div
+    $("#game").append(app.canvas);
+    
+    // resize the canvas on window change
+    window.addEventListener('resize', () => resizeCanvas(app, windowChange));
+
+    const game = new Game(window, app, TEXTURES, SOUND_MANAGER, KEY_INPUTS, windowChange);
     console.log(MODULE_NAME_PREFIX, 'Game:', game);
-}
 
-export function debugPrintScreen() {
-    console.log(MODULE_NAME_PREFIX, 'Screen:', app.screen);
-    console.log(MODULE_NAME_PREFIX, 'Canvas:', app.canvas);
-    console.log(MODULE_NAME_PREFIX, 'Renderer:', app.renderer);
-    console.log(MODULE_NAME_PREFIX, 'Stage:', app.stage);
+    // PIXI's ticker for the game loop
+    app.ticker.add((delta) => game.update(delta));
 }
 
 ////////////////////////////////////////////////// code execution starts here //////////////////////////////////////////////////
-// prompt the user to click to start the game (audio context)
-
-const windowChange = {
-    resized: false
-};
-
 // create a new instance of a pixi application
-export const app = new PIXI.Application();  // TODO remove export (debugging)
-await app.init(PIXI_INIT_CONFIG);
-
-// mouse click debug
-// app.view.addEventListener('click', (event) => {
-//     // Get the bounding rectangle of the canvas
-//     const rect = app.view.getBoundingClientRect();
-
-//     // Calculate the mouse position relative to the canvas
-//     const x = event.clientX - rect.left;
-//     const y = event.clientY - rect.top;
-
-//     // Log the coordinates
-//     console.log(`Mouse click at canvas coords: (${x}, ${y})`);
-// });
-
-// add the canvas to "game" div
-$("#game").append(app.canvas);
-
-// resize the canvas on window change
-window.addEventListener('resize', () => resizeCanvas(app, windowChange));
-
-await setup();
-
-export const game = new Game(window, app, TEXTURES, SOUND_MANAGER, KEY_INPUTS, windowChange);      // TODO remove export (debugging)
-console.log(MODULE_NAME_PREFIX, 'Game:', game);
-
-// PIXI's ticker for the game loop
-app.ticker.add((delta) => game.update(delta));
-
-// exposed debug functions
-window.app = app;
-window.test = debugTest;
-window.debugPrintGameState = debugPrintGameState;
-window.debugPrintGame = debugPrintGame;
-window.game = game;
-window.debugPrintScreen = debugPrintScreen;
-
-/**
- * Debug function
- */
-export function debugTest() {
-    console.log('test success');
-}
+const app = new PIXI.Application();
+setup(app);

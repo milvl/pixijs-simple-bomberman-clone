@@ -2,9 +2,11 @@
   "name": "uur_bomberman_clone",
   "version": "1.0.0",
   "description": "A semestral work for KIV/UUR",
-  "main": "index.js",
   "scripts": {
-    "start": "http-server",
+    "quickstart": "http-server",
+    "clean": "rm -rf dist",
+    "start": "npm run clean && mkdir dist && cp -r img dist && cp -r audio dist && cp -r fonts dist && parcel index.html",
+    "build": "npm run clean && mkdir dist && cp -r img dist && cp -r audio dist && cp -r fonts dist && parcel build index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Milan Vlachovsky (mvlach@students.zcu.cz)",

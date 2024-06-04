@@ -10,6 +10,7 @@ export const LEVELS = [
     //     breakableWalls: [
     //     ],
     //     enemies: [
+    //         // {gridX: 1, gridY: 1},
     //     ],
     //     player: {gridX: 8, gridY: 5},
     // },

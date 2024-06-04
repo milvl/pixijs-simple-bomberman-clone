@@ -1,8 +1,6 @@
-let MODULE_NAME_PREFIX = 'loader.js - ';
+// import * as PIXI from 'pixi.js';
 
-function pformat(obj) {
-    return JSON.stringify(obj, null, 4);
-}
+let MODULE_NAME_PREFIX = 'loader.js - ';
 
 /**
  * Loads a manifest of asset bundles using PIXI Assets.

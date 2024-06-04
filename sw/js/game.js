@@ -1,3 +1,4 @@
+// import * as PIXI from 'pixi.js';
 import { GameState, GAME_STATES } from "./game_states.js";
 import { MainMenuDrawingManager, SettingsDrawingManager, EndGameDrawingManager } from "./drawing_manager_menus.js";
 import { GameSessionManager } from "./game_session.js";
@@ -222,9 +223,8 @@ export class Game {
 
     /**
      * Initializes the game session.
-     * @param {Number} delta - The time delta. 
      */
-    #initGameSession(delta) {
+    #initGameSession() {
         this.screenContent = {};
         this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.soundManager, this.keyInputs, ARENA_ROWS, ARENA_COLS);
         this.drawingManager.start();

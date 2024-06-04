@@ -1,3 +1,4 @@
+// import * as PIXI from 'pixi.js';
 import { HEX_COLOR_CODES } from "./constants/color_codes.js";
 import { GameSessionState } from "./game_session_states.js";
 import { LEVELS } from "./levels_config.js";
@@ -10,7 +11,6 @@ import { Explosion } from "./graphic_elements/explosion.js";
 import { BreakableWall } from "./graphic_elements/breakable_wall.js";
 import { SCORES } from "./constants/scores.js";
 import { ENDLESS_MODE_SETTINGS } from "./constants/endless_mode_settings.js";
-// import * as PIXI from 'pixi.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
 
@@ -254,64 +254,6 @@ export class GameSessionManager {
                     throw new Error(`${MODULE_NAME_PREFIX}Invalid game session state: ${state}`);
             }
         }
-        // // arrow keys for movement are handled on each frame update (to combat desync)
-
-        // const spaceFunc = () => {
-        //     if (this.started && this.screenContent.bombs.length < 1) {
-        //         this.bombToBePlaced = true;
-        //     }
-        // }
-
-        // const enterFunc = () => {
-        //     if (this.started) {
-        //         this.leave = true;
-        //         console.log(MODULE_NAME_PREFIX, 'Leaving game session');
-        //     }
-        // }
-
-        // const escFunc = () => {
-        //     if (this.started) {
-        //         if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS) {
-        //             this.keyInputs.space.press = null;
-        //             this.keyInputs.pause.press = null;
-        //             this.keyInputs.enter.press = enterFunc;
-        //             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT);
-        //             return;
-        //         }
-        //         if (this.gameSessionState.state === this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT) {
-        //             this.keyInputs.enter.press = null;
-        //             this.keyInputs.space.press = spaceFunc;
-        //             this.keyInputs.pause.press = pauseFunc;
-
-        //             this.leave = false;
-        //         }
-        //     }
-        // }
-
-        // const pauseFunc = () => {
-        //     if (this.started) {
-        //         if (this.gameSessionState.state !== this.gameSessionState.GAME_SESSION_STATE_PAUSED) {
-        //             this.keyInputs.space.press = null;
-        //             this.keyInputs.esc.press = null;
-        //             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_PAUSED);
-        //         }
-        //         else {
-        //             this.keyInputs.space.press = spaceFunc;
-        //             this.keyInputs.esc.press = escFunc;
-        //             this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS);
-        //             this.#handleGameSessionPausedUpdate(true);
-        //         }
-        //     }
-        // }
-        
-        // // spacebar for bomb
-        // this.keyInputs.space.press = spaceFunc;
-
-        // // esc for returning to main menu (with prompt)
-        // this.keyInputs.esc.press = escFunc;
-
-        // // p for pausing the game
-        // this.keyInputs.pause.press = pauseFunc;
     }
 
     /**
@@ -400,7 +342,7 @@ export class GameSessionManager {
         time.x = (hud_width * SCALE_WIDTH_OFFSET_TIME_TEXT_TO_HUD) - (time.width / 2);
         time.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
         this.screenContent.hudElems.push(time);
-        app.stage.addChild(time);
+        this.app.stage.addChild(time);
 
         // draw text for score
         const score_text = `Score:\n${this.stats.score}`;
@@ -408,7 +350,7 @@ export class GameSessionManager {
         score.x = (hud_width * SCALE_WIDTH_OFFSET_SCORE_TEXT_TO_HUD) - (score.width / 2);
         score.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
         this.screenContent.hudElems.push(score);
-        app.stage.addChild(score);
+        this.app.stage.addChild(score);
 
         // draw text for lives
         const lives_text = `Lives:\n${this.stats.lives}`;
@@ -416,7 +358,7 @@ export class GameSessionManager {
         lives.x = (hud_width * SCALE_WIDTH_OFFSET_LIVES_TEXT_TO_HUD) - (lives.width / 2);
         lives.y = (hud_height - (hud_height * SCALE_HEIGHT_HUD_TEXT_TO_HUD)) / 2;
         this.screenContent.hudElems.push(lives);
-        app.stage.addChild(lives);
+        this.app.stage.addChild(lives);
     }
 
     /**
@@ -433,7 +375,6 @@ export class GameSessionManager {
         entity.height = wallHeight * scaleToWall;
 
         // if entity scalling is negative, force it to be positive (to avoid spawning issues)
-        // TODO remove for testing xd
         if (entity.scale.x < 0) {
             entity.scale.x *= -1;
         }
@@ -1221,6 +1162,7 @@ export class GameSessionManager {
             console.error('Game session not started yet.');
             return;
         }
+
         switch (this.gameSessionState.state) {
             case this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS:
                 this.#handleGameSessionInProgressUpdate(delta);
