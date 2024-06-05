@@ -1,0 +1,16 @@
+#keywordSelect {
+    min-width: 3vw;
+}
+
+#keywordSelectPanel {
+    display: flex;
+    justify-content: flex-end;
+    max-height: 5vh;
+}
+
+#label {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-right: 1vw;
+}
