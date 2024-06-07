@@ -136,8 +136,10 @@ export class Game {
     /**
      * Binds the arrow keys to functions to operate the menu.
      * @param {Function} enterCallback - The callback function to call when the enter key is pressed.
+     * @param {Function} leftCallback - The callback function to call when the left key is pressed.
+     * @param {Function} rightCallback - The callback function to call when the right key is pressed.
      */
-    #setupOptionsKeys(enterCallback) {
+    #setupOptionsKeys(enterCallback, leftCallback = null, rightCallback = null) {
         this.keyInputs.up.press = () => {
             if (!this.keyInputs.down.isDown) {
                 this.screenContent.selected = mod(this.screenContent.selected - 1, this.screenContent.options.length);
@@ -153,6 +155,12 @@ export class Game {
             }
         }
         this.keyInputs.enter.press = enterCallback;
+        if (leftCallback != null) {
+            this.keyInputs.left.press = leftCallback;
+        }
+        if (rightCallback != null) {
+            this.keyInputs.right.press = rightCallback;
+        }
     }
 
     /**
@@ -314,7 +322,7 @@ export class Game {
         this.screenContent = this.#getSettingsContent();
 
         // bind key inputs to functions to update the content
-        let enterCallback = () => {
+        const enterCallback = () => {
             if (this.screenContent.selected != null) {
                 switch (this.screenContent.selected) {
                     case 0:
@@ -341,7 +349,57 @@ export class Game {
                 this.screenContent.updated = true;
             }
         };
-        this.#setupOptionsKeys(enterCallback);
+
+        const leftCallback = () => {
+            if (!this.keyInputs.right.isDown) {
+                switch (this.screenContent.selected) {
+                    case 0:
+                        this.screenContent.optionsValues[this.screenContent.selected] = mod(this.screenContent.optionsValues[this.screenContent.selected] - 1, DEFAULT_SETTINGS.lives + 1);
+                        this.settings.lives = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    case 1:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.volume = this.screenContent.optionsValues[this.screenContent.selected];
+                        this.soundManager.soundEnabled = this.settings.volume;
+                        break;
+                    case 2:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.endless = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
+                        break;
+                }
+                this.soundManager.playCursorSubmit();
+                this.screenContent.updated = true;
+            }
+        };
+
+        const rightCallback = () => {
+            if (!this.keyInputs.left.isDown) {
+                switch (this.screenContent.selected) {
+                    case 0:
+                        this.screenContent.optionsValues[this.screenContent.selected] = mod(this.screenContent.optionsValues[this.screenContent.selected] + 1, DEFAULT_SETTINGS.lives + 1);
+                        this.settings.lives = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    case 1:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.volume = this.screenContent.optionsValues[this.screenContent.selected];
+                        this.soundManager.soundEnabled = this.settings.volume;
+                        break;
+                    case 2:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.endless = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
+                        break;
+                }
+                this.soundManager.playCursorSubmit();
+                this.screenContent.updated = true;
+            }
+        };
+        this.#setupOptionsKeys(enterCallback, leftCallback, rightCallback);
     }
 
     /**

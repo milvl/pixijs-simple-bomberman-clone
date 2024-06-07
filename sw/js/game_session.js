@@ -408,7 +408,7 @@ export class GameSessionManager {
 
         this.enemiesSpriteTimer = 0;
 
-        // prepare entities
+        // prepare entities for normal mode
         if (!this.endless) {
             const levelConfig = this.levelsConfig[0];
 
@@ -436,6 +436,7 @@ export class GameSessionManager {
             this.screenContent.player = new Player(this.app, this.screenContent.arena, this.textures.player, SCALE_PLAYER_TO_WALL, this.playerMovementTextures);
             this.screenContent.player.spawn(x, y);
         }
+        // prepare entities for endless mode
         else {
             // player always in the middle
             const { x, y } = this.screenContent.arena.gridToCanvas(Math.floor(this.screenContent.arena.colsCount / 2), Math.floor(this.screenContent.arena.rowsCount / 2));
@@ -526,10 +527,10 @@ export class GameSessionManager {
             }
 
             // debug breakable wall
-            let breakableWall = new BreakableWall(this.app, this.screenContent.arena, this.textures.break_wall);
-            const { x: wallX, y: wallY } = this.screenContent.arena.gridToCanvas(1, 1);
-            breakableWall.spawn(wallX, wallY);
-            this.screenContent.breakableWalls.push(breakableWall);
+            // let breakableWall = new BreakableWall(this.app, this.screenContent.arena, this.textures.break_wall);
+            // const { x: wallX, y: wallY } = this.screenContent.arena.gridToCanvas(1, 1);
+            // breakableWall.spawn(wallX, wallY);
+            // this.screenContent.breakableWalls.push(breakableWall);
         }
     }
 
@@ -997,7 +998,7 @@ export class GameSessionManager {
             this.stats.lives -= 1;
 
             // check if player has no more lives
-            if (this.stats.lives <= 0) {
+            if (this.stats.lives < 0) {
                 this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
                 return;
             }
