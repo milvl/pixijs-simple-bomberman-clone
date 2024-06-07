@@ -28,7 +28,7 @@ def get_scores():
         for mode in ['normal', 'endless']:
             scores[mode] = {}
             for lives in [0, 1, 2, 3]:
-                scores[mode][lives] = list(scores_collection.find({'mode': mode, 'lives': lives}).sort([('score', DESCENDING), ('time', ASCENDING)]).limit(10))
+                scores[mode][lives] = list(scores_collection.find({'mode': mode, 'lives': lives}).sort([('level', DESCENDING), ('score', DESCENDING), ('time', ASCENDING)]).limit(10))
         for score in scores:
             for life in scores[score]:
                 for i in range(len(scores[score][life])):

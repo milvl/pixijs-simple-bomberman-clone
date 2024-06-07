@@ -73,6 +73,33 @@ function getBespokeRectText(text, x, y, logoRectWidth, logoRectHeight, fontFamil
 }
 
 /**
+ * Parses milliseconds into a time string.
+ * @param {Number} milliseconds - The time in milliseconds. 
+ * @returns {String} The time string in the format "mm:ss" or "hh:mm:ss" if hours are present.
+ */
+function parseTime(milliseconds) {
+    if (milliseconds < 0) {
+        milliseconds = 0;
+    }
+    let seconds = Math.floor(milliseconds / 1000);
+    let minutes = Math.floor(seconds / 60);
+    let hours = Math.floor(minutes / 60);
+    seconds = seconds % 60;
+
+    if (hours > 0) {
+        // I am not expecting someone to play for 100 hours straight so I won't bother scaling this
+        if (hours > 99) {
+            return '(ㆆ_ㆆ)????'
+        }
+        minutes = minutes % 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    }
+    else {
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+/**
  * Handles the drawing of the main menu.
  */
 export class MainMenuDrawingManager {
@@ -525,14 +552,18 @@ export class EndGameDrawingManager {
 }
 
 export class LeaderboardsDrawingManager {
-    TITLE_WIDTH_SCALE = 1/2;
-    TITLE_HEIGHT_SCALE = 1/5;
-    TITLE_Y_OFFSET_SCALE = 1/10;
-    LEADERBOARD_ENTRY_HEIGHT_SCALE = 1/20;
-    LEADERBOARD_ENTRY_GAP_SCALE = 1/40;
+    TITLE_WIDTH_TO_SCREEN_WIDTH_SCALE = 1/4;
+    TITLE_HEIGHT_TO_SCREEN_HEIGHT_SCALE = 1/8;
+    TITLE_Y_OFFSET_SCALE = 1/40;
     WAIT_SIGN_STRING = 'Loading...';
     WAIT_SIGN_HEIGHT_TO_SCREEN_HEIGHT_SCALE = 1/4;
     WAIT_SIGN_WIDTH_TO_SCREEN_WIDTH_SCALE = 1/2;
+    CONTROL_AREA_WIDTH_TO_SCREEN_WIDTH_SCALE = (1 - (this.TITLE_WIDTH_TO_SCREEN_WIDTH_SCALE)) / 2;
+    CONTROL_AREA_HEIGHT_TO_SCREEN_HEIGHT_SCALE = this.TITLE_HEIGHT_TO_SCREEN_HEIGHT_SCALE + 2*this.TITLE_Y_OFFSET_SCALE;
+    CONTROL_AREA_INFO_OUTLINE_WIDTH_TO_CONTROL_AREA_WIDTH_SCALE = 3/4;
+    LIVES_TEXT_WIDTH_TO_INFO_OUTLINE_WIDTH_SCALE = 3/4;
+    LIVES_CURSOR_GAP_TO_TEXT_HEIGHT_SCALE = 1/10;
+    LEADERBOARD_LINE_WIDTH_TO_SCREEN_WIDTH_SCALE = 97/100;
 
     constructor(app, textures, screenContent) {
         this.app = app;
@@ -550,14 +581,25 @@ export class LeaderboardsDrawingManager {
     #drawTitle() {
         const titleString = getStringWithSafeMargin(this.screenContent.title);
         const titleRect = new PIXI.Graphics();
-        const x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_SCALE)) / 2;
+        const x = (this.app.screen.width - (this.app.screen.width * this.TITLE_WIDTH_TO_SCREEN_WIDTH_SCALE)) / 2;
         const y = this.app.screen.height * this.TITLE_Y_OFFSET_SCALE;
-        const titleRectWidth = this.app.screen.width * this.TITLE_WIDTH_SCALE;
-        const titleRectHeight = this.app.screen.height * this.TITLE_HEIGHT_SCALE;
+        const titleRectWidth = this.app.screen.width * this.TITLE_WIDTH_TO_SCREEN_WIDTH_SCALE;
+        const titleRectHeight = this.app.screen.height * this.TITLE_HEIGHT_TO_SCREEN_HEIGHT_SCALE;
         const fontSize = getFontSize(titleString, titleRectWidth, titleRectHeight, TITLE_FONT_FAMILY);
-        titleRect.rect(x, y, titleRectWidth, titleRectHeight);
+        titleRect.roundRect(x, y, titleRectWidth, titleRectHeight, TEXT_RECT_RADIUS_SCALE_TO_RECT_WIDTH * titleRectWidth);
         titleRect.fill(HEX_COLOR_CODES.WHITE);
         this.app.stage.addChild(titleRect);
+
+        // text
+        let titleText = new PIXI.Text({'text': titleString, 'style':{
+            fontFamily: TITLE_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.BLACK,
+            align: 'center'
+        }});
+        titleText.x = x + (titleRectWidth / 2) - (titleText.width / 2);
+        titleText.y = y + (titleRectHeight / 2) - (titleText.height / 2);
+        this.app.stage.addChild(titleText);
     }
 
     #drawWaitSign() {
@@ -571,15 +613,202 @@ export class LeaderboardsDrawingManager {
         this.app.stage.addChild(invisibleRect);
 
         const fontSize = getFontSize(this.WAIT_SIGN_STRING, invisibleRectWidth, invisibleRectHeight, TEXT_FONT_FAMILY);
-        const waitSignText = new PIXI.Text(this.WAIT_SIGN_STRING, {
+        const waitSignText = new PIXI.Text({'text': this.WAIT_SIGN_STRING, 'style': {
             fontFamily: TEXT_FONT_FAMILY,
             fontSize: fontSize,
             fill: HEX_COLOR_CODES.WHITE,
             align: 'center'
-        });
+        }});
         waitSignText.x = x + (invisibleRectWidth / 2) - (waitSignText.width / 2);
         waitSignText.y = y + (invisibleRectHeight / 2) - (waitSignText.height / 2);
         this.app.stage.addChild(waitSignText);
+    }
+
+    /**
+     * Draws the lives controls to change the number of lives.
+     * @param {Number} controlAreaMaxWidth Max width of the control area.
+     * @param {Number} controlAreaLivesOutlineMaxWidth Max width of the lives text and cursor outline.
+     * @param {Number} controlAreaLivesOutlineMaxHeight Max height of the lives text and cursor outline.
+     */
+    #drawLivesControl(controlAreaMaxWidth, controlAreaLivesOutlineMaxWidth, controlAreaLivesOutlineMaxHeight) {
+        const livesTextMaxWidth = controlAreaLivesOutlineMaxWidth * this.LIVES_TEXT_WIDTH_TO_INFO_OUTLINE_WIDTH_SCALE;
+        const livesTextMaxHeight = controlAreaLivesOutlineMaxHeight;
+
+        // livesText
+        const livesString = this.screenContent.options[1] + this.screenContent.optionsValues[1];
+        const fontSize = getFontSize(livesString, livesTextMaxWidth, livesTextMaxHeight, TEXT_FONT_FAMILY);
+        const livesText = new PIXI.Text({'text': livesString, 'style': {
+            fontFamily: TEXT_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.WHITE,
+            align: 'center'
+        }});
+        livesText.x = 0;    // x offset added later
+        livesText.y = (livesTextMaxHeight - livesText.height) / 2;
+        this.app.stage.addChild(livesText);
+
+        // livesCursor bottom
+        const livesLowerCursor = new PIXI.Graphics();
+        // size of char M for that font size
+        const cursorWidth = livesText.width / livesString.length;
+        const cursorXOffsetFromText = cursorWidth / 2;
+        const cursorGapHeight = livesText.height * this.LIVES_CURSOR_GAP_TO_TEXT_HEIGHT_SCALE;
+        
+        const leftUpperPoint = {x: livesText.x + livesText.width + cursorXOffsetFromText, y: livesText.y + livesText.height / 2 + cursorGapHeight};
+        const rightUpperPoint = {x: leftUpperPoint.x + cursorWidth, y: leftUpperPoint.y};
+        const lowerPoint = {x: leftUpperPoint.x + cursorWidth / 2, y: livesText.y + livesText.height};
+        livesLowerCursor.poly([leftUpperPoint.x, leftUpperPoint.y, 
+                          rightUpperPoint.x, rightUpperPoint.y, 
+                          lowerPoint.x, lowerPoint.y]);
+        livesLowerCursor.fill(HEX_COLOR_CODES.WHITE);
+        this.app.stage.addChild(livesLowerCursor);
+
+        // livesCursor top (same as bottom but opposite y)
+        const livesUpperCursor = new PIXI.Graphics();
+        const rightLowerPoint = {x: rightUpperPoint.x, y: rightUpperPoint.y - cursorGapHeight};
+        const leftLowerPoint = {x: leftUpperPoint.x, y: leftUpperPoint.y - cursorGapHeight};
+        const upperPoint = {x: lowerPoint.x, y: livesText.y};
+        livesUpperCursor.poly([rightLowerPoint.x, rightLowerPoint.y,
+                          leftLowerPoint.x, leftLowerPoint.y,
+                          upperPoint.x, upperPoint.y]);
+        livesUpperCursor.fill(HEX_COLOR_CODES.WHITE);
+        this.app.stage.addChild(livesUpperCursor);
+        
+        // now add to everythings' x coords to center it in the control area
+        const xOffSet = (controlAreaMaxWidth - livesText.width - cursorWidth - cursorXOffsetFromText) / 2;
+        livesText.x += xOffSet;
+        livesLowerCursor.x += xOffSet;
+        livesUpperCursor.x += xOffSet;
+
+        return fontSize;        // for modeText
+    }
+
+    /**
+     * Draws the mode controls to change between normal and endless mode.
+     * @param {Number} fontSize
+     * @param {Number} controlAreaMaxWidth
+     * @param {Number} controlAreaLivesOutlineMaxWidth
+     * @param {Number} controlAreaLivesOutlineMaxHeight 
+     */
+    #drawModeControl(fontSize, controlAreaMaxWidth, controlAreaLivesOutlineMaxWidth, controlAreaLivesOutlineMaxHeight) {
+        const modeTextMaxWidth = controlAreaLivesOutlineMaxWidth * this.LIVES_TEXT_WIDTH_TO_INFO_OUTLINE_WIDTH_SCALE;
+        const modeTextMaxHeight = controlAreaLivesOutlineMaxHeight;
+
+        // modeText
+        const modeString = this.screenContent.options[0] + '\n' + this.screenContent.optionsValues[0];
+        const modeStripped = modeString.replace(/\n/g, '');
+        const modeText = new PIXI.Text({'text': modeString, 'style': {
+            fontFamily: TEXT_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.WHITE,
+            align: 'center'
+        }});
+        const modeStrippedText = new PIXI.Text({'text': modeStripped, 'style': {        // for calculating width of one char
+            fontFamily: TEXT_FONT_FAMILY,
+            fontSize: fontSize,
+            fill: HEX_COLOR_CODES.WHITE,
+            align: 'center'
+        }});
+        modeText.x = this.app.screen.width - controlAreaMaxWidth;       // x offset added later
+        modeText.y = (modeTextMaxHeight - modeText.height) / 2;
+        this.app.stage.addChild(modeText);
+
+        let cursorWidth = modeStrippedText.width / modeStripped.length;
+        const cursorHeight = modeStrippedText.height;
+        const cursorXOffsetFromText = cursorWidth / 2;
+        const cursorGapWidth = modeStrippedText.height * this.LIVES_CURSOR_GAP_TO_TEXT_HEIGHT_SCALE;
+        cursorWidth -= cursorGapWidth;
+        
+        // modeCursor left
+        const modeCursorLeft = new PIXI.Graphics();
+        const leftMiddlePoint = {x: modeText.x + modeText.width + cursorXOffsetFromText, y: modeText.y + modeText.height / 2};
+        const rightUpperPoint = {x: leftMiddlePoint.x + cursorWidth, y: leftMiddlePoint.y - cursorHeight / 2};
+        const rightLowerPoint = {x: rightUpperPoint.x, y: rightUpperPoint.y + cursorHeight};
+        modeCursorLeft.poly([leftMiddlePoint.x, leftMiddlePoint.y,
+                          rightUpperPoint.x, rightUpperPoint.y,
+                          rightLowerPoint.x, rightLowerPoint.y]);
+        modeCursorLeft.fill(HEX_COLOR_CODES.WHITE);
+        this.app.stage.addChild(modeCursorLeft);
+
+        // modeCursor right
+        const modeCursorRight = new PIXI.Graphics();
+        const rightMiddlePoint = {x: modeText.x + modeText.width + cursorXOffsetFromText + cursorWidth + cursorGapWidth + cursorWidth, y: modeText.y + modeText.height / 2};
+        const leftUpperPoint = {x: rightMiddlePoint.x - cursorWidth, y: rightMiddlePoint.y - cursorHeight / 2};
+        const leftLowerPoint = {x: leftUpperPoint.x, y: leftUpperPoint.y + cursorHeight};
+        modeCursorRight.poly([rightMiddlePoint.x, rightMiddlePoint.y,
+                          leftUpperPoint.x, leftUpperPoint.y,
+                          leftLowerPoint.x, leftLowerPoint.y]);
+        modeCursorRight.fill(HEX_COLOR_CODES.WHITE);
+        this.app.stage.addChild(modeCursorRight);
+
+        // now add to everythings' x coords to center it in the control area
+        const xOffSet = (controlAreaMaxWidth - modeText.width - cursorWidth - cursorXOffsetFromText) / 2;
+        modeText.x += xOffSet;
+        modeCursorLeft.x += xOffSet;
+        modeCursorRight.x += xOffSet;
+    }
+
+
+    #drawControls() {
+        const controlAreaMaxWidth = this.app.screen.width * this.CONTROL_AREA_WIDTH_TO_SCREEN_WIDTH_SCALE;
+        const controlAreaMaxHeight = this.app.screen.height * this.CONTROL_AREA_HEIGHT_TO_SCREEN_HEIGHT_SCALE;
+
+        const controlAreaLivesOutlineMaxWidth = controlAreaMaxWidth * this.CONTROL_AREA_INFO_OUTLINE_WIDTH_TO_CONTROL_AREA_WIDTH_SCALE;
+        const controlAreaLivesOutlineMaxHeight = controlAreaMaxHeight;
+
+        const fontSize = this.#drawLivesControl(controlAreaMaxWidth, controlAreaLivesOutlineMaxWidth, controlAreaLivesOutlineMaxHeight);
+        this.#drawModeControl(fontSize, controlAreaMaxWidth, controlAreaLivesOutlineMaxWidth, controlAreaLivesOutlineMaxHeight);
+    }
+
+    #drawLeaderboards() {
+        const ranks = this.screenContent.leaderboards[this.screenContent.optionsValues[0].toLowerCase()][this.screenContent.optionsValues[1]];
+        const ranksWidth = this.app.screen.width * this.LEADERBOARD_LINE_WIDTH_TO_SCREEN_WIDTH_SCALE;
+        const xOffset = (this.app.screen.width - ranksWidth) / 2;
+        const ranksHeight = this.app.screen.height - (this.app.screen.height * this.CONTROL_AREA_HEIGHT_TO_SCREEN_HEIGHT_SCALE);
+        const rankHeight = ranksHeight / ((ranks.length + 1) * 2);    // including header and space between ranks
+        const rankLabelString = 'Rank';
+        const nameLabelString = 'Name';
+        const levelLabelString = 'Level';
+        const scoreLabelString = 'Score';
+        const timeLabelString = 'Time';
+        const headerLabels = [rankLabelString, nameLabelString, levelLabelString, scoreLabelString, timeLabelString];
+        const longestHeaderLabelString = headerLabels.reduce((a, b) => a.length > b.length ? a : b);
+        const rankWidth = ranksWidth / headerLabels.length;
+        const rankHeaderFontSize = getFontSize(longestHeaderLabelString, ranksWidth, rankHeight, TEXT_FONT_FAMILY);
+
+        // header
+        for (let i = 0; i < headerLabels.length; i++) {
+            let headerText = new PIXI.Text({'text': headerLabels[i], 'style': {
+                fontFamily: TEXT_FONT_FAMILY,
+                fontSize: rankHeaderFontSize,
+                fill: HEX_COLOR_CODES.WHITE,
+                align: 'center'
+            }});
+            headerText.x = xOffset + (i * rankWidth) + (rankWidth / 2) - (headerText.width / 2);
+            headerText.y = this.app.screen.height * this.CONTROL_AREA_HEIGHT_TO_SCREEN_HEIGHT_SCALE;
+            this.app.stage.addChild(headerText);
+        }
+
+        // ranks
+        for (let i = 0; i < ranks.length; i++) {
+            for (let j = 0; j < headerLabels.length; j++) {
+                let rankString = j === 0 ? `${i + 1}` : ranks[i][headerLabels[j].toLowerCase()];      // skip rank label as it calculated
+                // time parsing
+                if (j === 4) {
+                    rankString = parseTime(rankString);
+                }
+                const fontSize = getFontSize(rankString, ranksWidth, rankHeight, TEXT_FONT_FAMILY);
+                let rankText = new PIXI.Text({'text': rankString, 'style': {
+                    fontFamily: TEXT_FONT_FAMILY,
+                    fontSize: fontSize,
+                    fill: HEX_COLOR_CODES.WHITE,
+                    align: 'center'
+                }});
+                rankText.x = xOffset + (j * rankWidth) + (rankWidth / 2) - (rankText.width / 2);
+                rankText.y = this.app.screen.height * this.CONTROL_AREA_HEIGHT_TO_SCREEN_HEIGHT_SCALE + (i + 1) * 2 * rankHeight;
+                this.app.stage.addChild(rankText);
+            }
+        }
     }
 
     drawWait() {
@@ -588,18 +817,25 @@ export class LeaderboardsDrawingManager {
     }
 
     draw() {
-        // TODO here
+        this.#drawBackground();
+        this.#drawTitle();
+        this.#drawControls();
+        this.#drawLeaderboards();
     }
 
     redraw() {
+        this.app.stage.removeChildren();
+        this.draw();
+        
     }
 
     cleanUp() {
+        this.app.stage.removeChildren();
     }
 }
 
 // Leaderboards:
-// {"endless":{"0":[{"lives":0,"mode":"endless","name":"203","score":400,"time":16080.68},{"level":10,"lives":0,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":0,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":0,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":0,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":0,"mode":"endless","name":"III","score":30,"time":60000}],"1":[{"level":10,"lives":1,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":1,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":1,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":1,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"III","score":30,"time":60000},{"level":9,"lives":1,"mode":"endless","name":"JJJ","score":20,"time":60000}],"2":[{"level":10,"lives":2,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":2,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":2,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":2,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"III","score":30,"time":60000},{"level":9,"lives":2,"mode":"endless","name":"JJJ","score":20,"time":60000}],"3":[{"level":10,"lives":3,"mode":"endless","name":"AAA","score":100,"time":60000},{"level":10,"lives":3,"mode":"endless","name":"BBB","score":100,"time":65000},{"level":10,"lives":3,"mode":"endless","name":"CCC","score":90,"time":50000},{"level":10,"lives":3,"mode":"endless","name":"DDD","score":80,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"EEE","score":70,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"FFF","score":60,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"GGG","score":50,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"HHH","score":40,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"III","score":30,"time":60000},{"level":9,"lives":3,"mode":"endless","name":"JJJ","score":20,"time":60000}]},"normal":{"0":[{"level":10,"lives":0,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":0,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":0,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":0,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":0,"mode":"normal","name":"JJJ","score":20,"time":60000}],"1":[{"level":10,"lives":1,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":1,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":1,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":1,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":1,"mode":"normal","name":"JJJ","score":20,"time":60000}],"2":[{"level":10,"lives":2,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":2,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":2,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":2,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":2,"mode":"normal","name":"JJJ","score":20,"time":60000}],"3":[{"level":10,"lives":3,"mode":"normal","name":"AAA","score":100,"time":60000},{"level":10,"lives":3,"mode":"normal","name":"BBB","score":100,"time":65000},{"level":10,"lives":3,"mode":"normal","name":"CCC","score":90,"time":50000},{"level":10,"lives":3,"mode":"normal","name":"DDD","score":80,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"EEE","score":70,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"FFF","score":60,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"GGG","score":50,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"HHH","score":40,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"III","score":30,"time":60000},{"level":9,"lives":3,"mode":"normal","name":"JJJ","score":20,"time":60000}]}}
+// {"endless":{"0":[{"lives":0,"mode":"endless","name":"203","score":400,"time":16080.68},{"level":10,"lives":0
 // /**
 //      * Sets up the keys for the leaderboards screen.
 //      */

@@ -48,6 +48,7 @@ const MANIFEST = {
                 { alias: "explosion_sound", src: "./audio/explosion.ogg"},
                 { alias: "new_level", src: "./audio/new_level.ogg"},
                 { alias: "player_hit", src: "./audio/player_hit.ogg"},
+                { alias: "scored", src: "./audio/scored.mp3"},
             ]
         },
         {
@@ -244,6 +245,7 @@ async function setup(app) {
     KEY_INPUTS.enter = keyboard("Enter");
     KEY_INPUTS.esc = keyboard("Escape");
     KEY_INPUTS.pause = keyboard("p");
+    KEY_INPUTS.pauseUpper = keyboard("P");
 
     const windowChange = {
         resized: false

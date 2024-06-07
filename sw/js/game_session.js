@@ -11,10 +11,10 @@ import { Explosion } from "./graphic_elements/explosion.js";
 import { BreakableWall } from "./graphic_elements/breakable_wall.js";
 import { SCORES } from "./constants/scores.js";
 import { ENDLESS_MODE_SETTINGS } from "./constants/endless_mode_settings.js";
+import { Entity } from './graphic_elements/entity.js';
 
 const MODULE_NAME_PREFIX = 'game_session.js - ';
 
-const TITLE_FONT_FAMILY = "Emulogic zrEw";
 const TEXT_FONT_FAMILY = "Pressstart2p Vav7";
 
 const SCALE_WIDTH_ARENA_TO_SCREEN = 1;
@@ -76,40 +76,6 @@ function parseTime(milliseconds) {
     }
 }
 
-/**
- * Checks if two rectangles (will) collide.
- * @param {Number} e1_x - The x-coordinate of the first element.
- * @param {Number} e1_y - The y-coordinate of the first element.
- * @param {Number} e1Width - The width of the first element.
- * @param {Number} e1Height - The height of the first element.
- * @param {Number} e2_x - The x-coordinate of the second element.
- * @param {Number} e2_y - The y-coordinate of the second element.
- * @param {Number} e2Width - The width of the second element.
- * @param {Number} e2Height - The height of the second element.
- * @param {Number} [e1DeltaX=0] - The delta x-coordinate of the first element (optional).
- * @param {Number} [e1DeltaY=0] - The delta y-coordinate of the first element (optional).
- * @returns {Boolean} True if the elements collide, false otherwise.
- */
-function checkCollision(e1_x, e1_y, e1Width, e1Height, e2_x, e2_y, e2Width, e2Height, e1DeltaX = 0, e1DeltaY = 0) {
-    const e1_nextX = e1_x + e1DeltaX;
-    const e1_nextY = e1_y + e1DeltaY;
-
-    const e1_left = e1_nextX;
-    const e1_right = e1_nextX + e1Width;
-    const e1_top = e1_nextY;
-    const e1_bottom = e1_nextY + e1Height;
-
-    const e2_left = e2_x;
-    const e2_right = e2_x + e2Width;
-    const e2_top = e2_y;
-    const e2_bottom = e2_y + e2Height;
-
-    return !(e1_left >= e2_right ||
-             e1_right <= e2_left ||
-             e1_top >= e2_bottom ||
-             e1_bottom <= e2_top);
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 /**
  * Represents the game session manager.
@@ -136,6 +102,7 @@ export class GameSessionManager {
             score: 0,
             time: 0,
             lives: settings.lives,
+            level: 1,
         };
 
         // game vector graphics objects
@@ -164,14 +131,11 @@ export class GameSessionManager {
         this.gameSessionState = null;
         this.livesLeft = settings.lives;
         this.levelsConfig = null;
-        this.level = 1;
 
         // flags
         this.started = false;
         this.ended = false;
         this.bombToBePlaced = false;
-        // this.playerMoving = false;
-        // this.playerMovingTime = 0;
         this.livesLeftScreenInfo = null;
         this.userLeave = null;
     }
@@ -232,21 +196,23 @@ export class GameSessionManager {
                 case this.gameSessionState.GAME_SESSION_STATE_IN_PROGRESS:
                     this.keyInputs.space.press = spaceFunc;
                     this.keyInputs.pause.press = pauseFunc;
+                    this.keyInputs.pauseUpper.press = pauseFunc;
                     this.keyInputs.esc.press = bringUpLeavePromptFunc;
                     break;
                 
                 case this.gameSessionState.GAME_SESSION_STATE_PAUSED:
-                this.keyInputs.pause.press = unpauseFunc;
-                break;
+                    this.keyInputs.pause.press = unpauseFunc;
+                    this.keyInputs.pauseUpper.press = unpauseFunc;
+                    break;
                 
                 case this.gameSessionState.GAME_SESSION_STATE_LEAVE_PROMPT:
-                this.keyInputs.enter.press = leaveFunc;
-                this.keyInputs.esc.press = backToGameFunc;
-                break;
+                    this.keyInputs.enter.press = leaveFunc;
+                    this.keyInputs.esc.press = backToGameFunc;
+                    break;
                 
                 case this.gameSessionState.GAME_SESSION_STATE_GAME_END:
-                case this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT:
-                case this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN:
+                    case this.gameSessionState.GAME_SESSION_STATE_PLAYER_HIT:
+                    case this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN:
                     // no key inputs
                     break;
                 
@@ -263,6 +229,7 @@ export class GameSessionManager {
         this.keyInputs.space.press = null;
         this.keyInputs.esc.press = null;
         this.keyInputs.pause.press = null;
+        this.keyInputs.pauseUpper.press = null;
         this.keyInputs.enter.press = null;
         this.keyInputs.up.press = null;
         this.keyInputs.down.press = null;
@@ -412,6 +379,9 @@ export class GameSessionManager {
         entity.y = entity.y * newHeightScale;
     }
 
+    /**
+     * Prepares the entities for the game session.
+     */
     #prepareEntities() {
         // clear any existing entities
         if (this.screenContent.player) {
@@ -477,8 +447,8 @@ export class GameSessionManager {
             // they will be removed when the random enemies/breakable walls are spawned
             const toRemove = [];
             const { x: playerGridX, y: playerGridY } = this.screenContent.arena.canvasToGrid(x, y);
-            for (let i = -1; i <= 1; i++) {
-                for (let j = -1; j <= 1; j++) {
+            for (let i = -2; i <= 2; i++) {
+                for (let j = -2; j <= 2; j++) {
                     const { x: wallX, y: wallY } = this.screenContent.arena.gridToCanvas(playerGridX + i, playerGridY + j);
                     let breakableWall = new BreakableWall(this.app, this.screenContent.arena, this.textures.break_wall);
                     breakableWall.spawn(wallX, wallY);
@@ -605,7 +575,6 @@ export class GameSessionManager {
         this.screenContent.hudElems[INDEX_SCREEN_CONTENT_HUD_TEXT_TIME].text = `Time:\n${parseTime(this.stats.time)}`;
         this.screenContent.hudElems[INDEX_SCREEN_CONTENT_HUD_TEXT_SCORE].text = `Score:\n${this.stats.score}`;
         this.screenContent.hudElems[INDEX_SCREEN_CONTENT_HUD_TEXT_LIVES].text = `Lives:\n${this.stats.lives}`;
-        // this.#drawStats(); // to ensure the text is updated and scaled properly (can be overlayed because hud is always at the top of the screen)
     }
 
     /**
@@ -629,6 +598,11 @@ export class GameSessionManager {
         return res;
     }
 
+    /**
+     * Updates the breakable walls on the screen.
+     * @param {Array} entitiesToCheckHitBy - The entities for breakable walls to check hit by.
+     * @returns {Object} The updated breakable wall data.
+     */
     #updateBreakableWalls(entitiesToCheckHitBy) {
         const updateData = {
             entitiesToCheckHitBy: entitiesToCheckHitBy,
@@ -751,6 +725,35 @@ export class GameSessionManager {
     }
 
     /**
+     * Gets the entities to check hit by on the screen.
+     * Their hitboxes are scaled down to 70% of their original size.
+     * This is to give the player a bit of leeway when dodging enemies.
+     * @returns {Array} The entities to check hit by on the screen.
+     */
+    #getCustomEnemyHitcheckObjects() {
+        const objects = [];
+        for (let enemy of this.screenContent.enemies) {
+            const realBounds = enemy.elem.getBounds();
+            // coyote time similar adjustment
+            const scale = 0.5;
+            const minX = realBounds.minX + ((realBounds.width - realBounds.width * scale) / 2);
+            const minY = realBounds.minY + ((realBounds.height - realBounds.height * scale) / 2);
+            const width = realBounds.width * scale;
+            const height = realBounds.height * scale;
+
+            const hitBounds = {
+                getBounds: () => {
+                    return {minX: minX, minY: minY, x: minX, y: minY, width: width, height: height};
+                }
+            }
+
+            objects.push({elem: hitBounds});
+        }
+
+        return objects;
+    }
+
+    /**
      * Updates the game entities.
      * @param {Object} delta - The delta object.
      * @returns {Object} The update response.
@@ -760,7 +763,7 @@ export class GameSessionManager {
         const obstacles = this.#getObstacles();
         const bombs = this.screenContent.bombs;
         const explosionInstances = this.screenContent.explosions.map(explosion => explosion.explosionInstances).flat();
-        const enemies = this.screenContent.enemies;
+        const enemies = this.#getCustomEnemyHitcheckObjects();
         let enemiesHit = 0;
         let brokenWalls = 0;
 
@@ -826,7 +829,7 @@ export class GameSessionManager {
                         return;
                     }
                 }
-                this.level += 1;
+                this.stats.level += 1;
                 this.#cleanUpKeyInputs();
                 this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_LEVEL_INFO_SCREEN);
             
@@ -862,7 +865,11 @@ export class GameSessionManager {
             multiplier += scoreUpdate.brokenWalls;
         }
         
-        this.stats.score += result * multiplier;
+        const addition = result * multiplier;
+        if (addition > 0) {
+            this.soundManager.playPlayerScored();
+            this.stats.score += result * multiplier;
+        }
     }
 
     /**
@@ -947,6 +954,10 @@ export class GameSessionManager {
         }
     }
 
+    /**
+     * Handles updating the game session when the player is hit.
+     * @param {Object} delta Delta object for time-based updates.
+     */
     #handleGameSessionPlayerHitUpdate(delta) {
         if (this.keyInputs.space.press
             || this.keyInputs.esc.press
@@ -984,6 +995,8 @@ export class GameSessionManager {
         if (this.playerHitScreenInfo.playerHitTime >= DURATIONS.MS_PLAYER_HIT) {
             this.playerHitScreenInfo = null;
             this.stats.lives -= 1;
+
+            // check if player has no more lives
             if (this.stats.lives <= 0) {
                 this.gameSessionState.switchToGameState(this.gameSessionState.GAME_SESSION_STATE_GAME_END);
                 return;
@@ -1010,7 +1023,7 @@ export class GameSessionManager {
             this.levelChangeInfo = {};
             this.levelChangeInfo.levelChangeTime = 0;
 
-            const newLevelString = `Level: ${this.level}\nLives left: ${this.stats.lives}`;
+            const newLevelString = `Level: ${this.stats.level}\nLives left: ${this.stats.lives}`;
             this.#drawInfoScreen(newLevelString);
 
             this.soundManager.playNewLevel();

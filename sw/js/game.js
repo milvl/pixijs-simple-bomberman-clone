@@ -1,4 +1,4 @@
-import $ from 'jquery';
+import $, { ready } from 'jquery';
 import * as PIXI from 'pixi.js';
 import { GameState, GAME_STATES } from "./game_states.js";
 import { MainMenuDrawingManager, SettingsDrawingManager, EndGameDrawingManager, LeaderboardsDrawingManager } from "./drawing_manager_menus.js";
@@ -63,6 +63,7 @@ const AVAILIBLE_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 const DEFAULT_LEADERBOARDS_CONTENT = {
     updated: false,
+    wait: true,
     ready: false,
     title: 'Leaderboards',
     options: [
@@ -81,6 +82,15 @@ const DEFAULT_LEADERBOARDS_CONTENT = {
         'Time',
     ],
 };
+
+const BANNED_NAMES = [
+    "CUM",
+    "ASS",
+    "FAG",
+    "SEX"
+]
+
+const REJECTED_NAME_REPLACEMENT = "NAY"
 
 /**
  * Returns the modulo of two numbers.
@@ -377,38 +387,49 @@ export class Game {
      * Sets up the keys for the leaderboards screen.
      */
     #setupLeaderboardsKeys() {
+        // function to change the mode
         const changeModeFunc = () => {
-            this.screenContent.optionsValues[0] = this.screenContent.optionsValues[0] === 'Normal' ? 'Endless' : 'Normal';
-            this.soundManager.playCursor();
-            this.screenContent.updated = true;
+            if (this.screenContent.ready) {
+                this.screenContent.optionsValues[0] = this.screenContent.optionsValues[0] === 'Normal' ? 'Endless' : 'Normal';
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
         }
         
-        this.keyInputs.up.press = () => {
-            if (!this.keyInputs.down.isDown) {
+        this.keyInputs.left.press = () => {
+            if (!this.keyInputs.down.isDown && this.screenContent.ready) {
                 changeModeFunc();
+            }
+        }
+
+        this.keyInputs.right.press = () => {
+            if (!this.keyInputs.up.isDown && this.screenContent.ready) {
+                changeModeFunc();
+            }
+        }
+
+        // function to change the lives
+        const changeLivesFunc = (delta) => {
+            if (this.screenContent.ready) {
+                this.screenContent.optionsValues[1] = mod(this.screenContent.optionsValues[1] + delta, 4);
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+
+        this.keyInputs.up.press = () => {
+            if (this.screenContent.ready) {
+                changeLivesFunc(1);
             }
         }
 
         this.keyInputs.down.press = () => {
-            if (!this.keyInputs.up.isDown) {
-                changeModeFunc();
+            if (this.screenContent.ready) {
+                changeLivesFunc(-1);
             }
         }
 
-        const changeLivesFunc = (delta) => {
-            this.screenContent.optionsValues[1] = mod(this.screenContent.optionsValues[1] + delta, 4);
-            this.soundManager.playCursor();
-            this.screenContent.updated = true;
-        }
-
-        this.keyInputs.left.press = () => {
-            changeLivesFunc(-1);
-        }
-
-        this.keyInputs.right.press = () => {
-            changeLivesFunc(1);
-        }
-
+        // function to return to the main menu
         const returnToMainMenuFunc = () => {
             this.#cleanUpMenu();
             this.drawingManager.cleanUp();
@@ -438,7 +459,7 @@ export class Game {
             success: (response) => {
                 console.log(MODULE_NAME_PREFIX, 'Leaderboards:', response);
                 this.screenContent.leaderboards = response;
-                this.screenContent.ready = true;
+                this.screenContent.wait = false;
             },
             error: (xhr, status, error) => {
                 console.error(MODULE_NAME_PREFIX, 'Error:', error);
@@ -459,15 +480,16 @@ export class Game {
             this.drawingManager = new LeaderboardsDrawingManager(this.app, this.textures, this.screenContent);
             
             // if the leaderboards are not ready, draw the wait screen
-            if (!this.screenContent.ready) {
+            if (this.screenContent.wait) {
                 this.drawingManager.drawWait();
             }
         }
 
         // if the leaderboards are ready, draw them
-        if (this.screenContent.ready && !this.screenContent.updated) {
+        if (!this.screenContent.wait && !this.screenContent.ready) {
             this.drawingManager.draw();
-            this.screenContent.updated = false;
+            this.screenContent.ready = true;
+            // now can be false because the leaderboards were already drawn
         }
 
         // if the leaderboards are ready and updated, redraw them
@@ -513,6 +535,10 @@ export class Game {
             for (let i = 0; i < this.screenContent.options.length; i++) {
                 name += this.screenContent.options[i].letter;
             }
+            for (let banned of BANNED_NAMES) {
+                name = name.replace(banned, REJECTED_NAME_REPLACEMENT);
+            }
+
             this.screenContent.submited = name;
             console.log(MODULE_NAME_PREFIX, 'Submited name:', this.screenContent.submited);
             
@@ -523,6 +549,7 @@ export class Game {
                 time: this.recievedStats.time,
                 lives: this.recievedStats.lives,
                 mode: this.recievedStats.mode,
+                level: this.recievedStats.level,
             };
             
             // submit the stats to the server

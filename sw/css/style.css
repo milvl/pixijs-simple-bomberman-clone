@@ -1,6 +1,6 @@
 body {
     display: flex;
-    justify-content: center;
+    justify-content: space-around;
     align-items: center;
     color: black;
     background-color: grey;
@@ -8,6 +8,7 @@ body {
     padding: 0;
     height: 100vh;
     width: 100vw;
+    gap: 2vw;
 }
 
 #game {
@@ -17,3 +18,66 @@ body {
     width: 65vw;
     height: 80vh;
 }
+
+#controlHints {
+    padding: 1vh;
+    width: 10vw;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    flex-direction: column;
+    color: white;
+    font-size: 1.5vh;
+    border: 0.15vh solid white;
+    border-radius: 1vh;
+    margin-left: 5vh;
+}
+
+#specialThanks {
+    padding: 1vh;
+    width: 10vw;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    flex-direction: column;
+    color: white;
+    font-size: 1.5vh;
+    border: 0.15vh solid white;
+    border-radius: 1vh;
+    margin-right: 5vh;
+}
+
+@media all and (max-width: 90vw) {
+    #controlHints, #specialThanks {
+        color: red;
+    }
+}
+
+/* <!doctype html>
+<html>
+  <head>
+    <title>KIV/UUR - Bomberman Clone</title>
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body>
+    <!-- game -->
+    <script src="js/app.js" type="module"></script>
+
+    <div id="controlHints">
+      <p>To control the game use:</p>
+      <p>Arrow keys</p>
+      <p>Esc</p>
+      <p>Enter</p>
+      <p>'p' to pause</p>
+      <p>Space to place a bomb</p>
+    </div>
+    <div id="game"></div>
+    <div id="specialThanks">
+      <p>Special thanks for assets to:</p>
+      <p><a href="https://cat-tabern.itch.io/">cat-tabern for ghost sprites</a></p>
+      <p><a href="https://analogstudios.itch.io/">analogstudios for player sprites</a></p>
+      <p><a href="https://www.freepik.com/free-vector/video-game-explosion-animation-pixel-art-explosion-animation-frames_13437690.htm#query=pixel%20explosion&position=0&from_view=keyword&track=ais_user&uuid=6ae4445d-6ebb-4b54-a59a-4ade42f707ec">freepik for explosion sprite</a></p>
+      <p><a href="https://pixabay.com/">pixabay for sound effects</a></p>
+    </div>
+  </body>
+</html> */

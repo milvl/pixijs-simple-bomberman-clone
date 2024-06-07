@@ -85,6 +85,13 @@ export class SoundManager {
     }
 
     /**
+     * Plays the sound of player scored.
+     */
+    playPlayerScored() {
+        this.#playSound('scored');
+    }
+
+    /**
      * @param {boolean} value - The sound enabled value.
      */
     set soundEnabled(value) {
