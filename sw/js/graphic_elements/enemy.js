@@ -63,6 +63,7 @@ export class Enemy extends Entity {
             this.elem.x -= this.elem.width;
         }
 
+        updateData.obstacles = [...updateData.obstacles, ...updateData.entitiesToCheckHitBy];       // to not search for path through explosions
         const res = super.update(updateData);
         res.spriteChangeTime = this.spriteChangeTime;
         return res;
