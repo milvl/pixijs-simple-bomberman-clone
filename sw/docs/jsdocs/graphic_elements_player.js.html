@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: graphic_elements/player.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: graphic_elements/player.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import * as PIXI from 'pixi.js';
+import { Entity } from './entity.js';
+import { DURATIONS } from '/js/constants/durations.js';
+import { MOVEMENT_SPEEDS } from '/js/constants/movement_speeds.js';
+
+const MODULE_NAME_PREFIX = 'player.js - ';
+
+export class Player extends Entity {
+    #MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT = MOVEMENT_SPEEDS.PLAYER_SCALE_FACTOR_TO_SCREEN_HEIGHT;
+    #DURATION_MS_MOVEMENT_SPRITE_CHANGE_PLAYER = DURATIONS.MS_MOVEMENT_SPRITE_CHANGE_PLAYER;
+
+    /**
+     * Represents the player in the arena.
+     * @param app {PIXI.Application} - The PIXI application.
+     * @param arena {Arena} - The arena where the player will be spawned.
+     * @param idleTexture {PIXI.Texture} - The texture to show when the player is not moving.
+     * @param scaleToWall {number} - The scale factor to apply to the player.
+     * @param movementTextures {Array} - The textures to show when the player is moving.
+     */
+    constructor(app, arena, idleTexture, scaleToWall, movementTextures) {
+        super(app, arena, idleTexture, scaleToWall);
+        this._isMoving = false;
+        this.idleTexture = idleTexture;
+        this.movementTextures = movementTextures;
+        this.currentPlayerTextureIndex = 0;
+        this.movementSpeed = this.app.screen.height * this.#MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT;
+        this.movementTime = 0;
+    }
+
+    /**
+     * Gets if the player is moving.
+     * @returns {boolean} If the player is moving.
+     */
+    get isMoving() {
+        return this._isMoving;
+    }
+
+    /**
+     * Sets if the player is moving.
+     * @param value {boolean} - If the player is moving.
+     */
+    set isMoving(value) {
+        this._isMoving = value;
+    }
+
+    /**
+     * Updates the player in the arena.
+     * @param updateData {object} - The update data.
+     * @param updateData.deltaTimeMS {number} - The time elapsed since the last update.
+     * @param updateData.keyInputs {object} - The key inputs.
+     * @returns {object} The updated player data.
+     */
+    update(updateData) {
+        const { deltaTimeMS: deltaTimeMS, keyInputs: keyInputs } = updateData;
+        // movement
+        const distance = this.movementSpeed * (deltaTimeMS / 1000); // convert ms to seconds
+        let deltaX = 0;
+        let deltaY = 0;
+
+        if (keyInputs.left.isDown) {
+            deltaX -= distance;
+            if (this.elem.scale.x > 0) {
+                this.elem.scale.x *= -1;
+                this.elem.x += this.elem.width;
+            }
+            this.isMoving = true;
+            this.elem.texture = this.movementTextures[this.currentPlayerTextureIndex];
+        }
+        if (keyInputs.right.isDown) {
+            deltaX += distance;
+            if (this.elem.scale.x &lt; 0) {
+                this.elem.scale.x *= -1;
+                this.elem.x -= this.elem.width;
+            }
+            this.isMoving = true;
+            this.elem.texture = this.movementTextures[this.currentPlayerTextureIndex];
+        }
+        if (keyInputs.up.isDown) {
+            deltaY -= distance;
+            this.isMoving = true;
+            this.elem.texture = this.movementTextures[this.currentPlayerTextureIndex];
+        }
+        if (keyInputs.down.isDown) {
+            deltaY += distance;
+            this.isMoving = true;
+            this.elem.texture = this.movementTextures[this.currentPlayerTextureIndex];
+        }
+        if (deltaX === 0 &amp;&amp; deltaY === 0) {
+            this.isMoving = false;
+        }
+        updateData.deltaX = deltaX;
+        updateData.deltaY = deltaY;
+
+        // texture swapping
+        if (this.isMoving) {
+            this.movementTime += deltaTimeMS;
+
+            if (this.movementTime >= this.#DURATION_MS_MOVEMENT_SPRITE_CHANGE_PLAYER) {
+                this.currentPlayerTextureIndex = (this.currentPlayerTextureIndex + 1) % this.movementTextures.length;
+                this.elem.texture = this.movementTextures[this.currentPlayerTextureIndex];
+                this.movementTime = 0;
+            }
+
+        } else {
+            this.movementTime = 0;
+            this.elem.texture = this.idleTexture;
+        }
+
+        const res = super.update(updateData);
+        res.isMoving = this.isMoving;
+        res.movementSpeed = this.movementSpeed;
+        return res;
+    }
+
+    /**
+     * Redraws the player in the arena.
+     * @param prevScreenSize {object} - The previous screen size.
+     */
+    redraw(prevScreenSize) {
+        super.redraw(prevScreenSize);
+        this.movementSpeed = this.app.screen.height * this.#MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT;
+    }
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Arena.html">Arena</a></li><li><a href="Bomb_Bomb.html">Bomb</a></li><li><a href="BreakableWall_BreakableWall.html">BreakableWall</a></li><li><a href="EndGameDrawingManager.html">EndGameDrawingManager</a></li><li><a href="Enemy.html">Enemy</a></li><li><a href="Entity.html">Entity</a></li><li><a href="Explosion_Explosion.html">Explosion</a></li><li><a href="ExplosionInstance.html">ExplosionInstance</a></li><li><a href="Game.html">Game</a></li><li><a href="GameSessionManager.html">GameSessionManager</a></li><li><a href="GameSessionState.html">GameSessionState</a></li><li><a href="GameState.html">GameState</a></li><li><a href="MainMenuDrawingManager.html">MainMenuDrawingManager</a></li><li><a href="Player_Player.html">Player</a></li><li><a href="SettingsDrawingManager.html">SettingsDrawingManager</a></li><li><a href="SoundManager.html">SoundManager</a></li></ul><h3>Global</h3><ul><li><a href="global.html#getBespokeRectText">getBespokeRectText</a></li><li><a href="global.html#getFontSize">getFontSize</a></li><li><a href="global.html#getProperDimensions">getProperDimensions</a></li><li><a href="global.html#getStringWithSafeMargin">getStringWithSafeMargin</a></li><li><a href="global.html#keyboard">keyboard</a></li><li><a href="global.html#loadAssetsManifest">loadAssetsManifest</a></li><li><a href="global.html#loadTextures">loadTextures</a></li><li><a href="global.html#mod">mod</a></li><li><a href="global.html#parseTime">parseTime</a></li><li><a href="global.html#PIXI_INIT_CONFIG">PIXI_INIT_CONFIG</a></li><li><a href="global.html#prepareAssets">prepareAssets</a></li><li><a href="global.html#prepareGameAssets">prepareGameAssets</a></li><li><a href="global.html#resizeCanvas">resizeCanvas</a></li><li><a href="global.html#setup">setup</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Sun Jun 09 2024 19:21:47 GMT+0200 (Central European Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

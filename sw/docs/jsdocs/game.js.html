@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: game.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: game.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import $, { ready } from 'jquery';
+import * as PIXI from 'pixi.js';
+import { GameState, GAME_STATES } from "./game_states.js";
+import { MainMenuDrawingManager, SettingsDrawingManager, EndGameDrawingManager, LeaderboardsDrawingManager } from "./drawing_manager_menus.js";
+import { GameSessionManager } from "./game_session.js";
+
+const MODULE_NAME_PREFIX = 'game.js - ';
+
+const ARENA_ROWS = 11;
+const ARENA_COLS = 21;
+
+const DEFAULT_SETTINGS = {
+    lives: 3,
+    volume: true,
+    endless: false,
+};
+
+const DEFAULT_MAIN_MENU_CONTENT = {
+    updated: true,
+    title: 'KIV/UUR - Bomberman Clone',
+    options: [
+        'Start Game',
+        'Settings',
+        'Leaderboards',
+    ],
+    selected: 0,
+    submited: null,
+};
+
+const DEFAULT_SETTINGS_CONTENT = {
+    updated: true,
+    title: 'Settings',
+    options: [
+        'Lives: ',
+        'Volume: ',
+        'Endless Mode: ',
+        'Back',
+    ],
+    optionsValues: [
+        DEFAULT_SETTINGS.lives,
+        DEFAULT_SETTINGS.volume,
+        DEFAULT_SETTINGS.endless,
+        undefined,
+    ],
+    selected: 0,
+    submited: null,
+};
+
+const DEFAULT_GAME_END_CONTENT = {
+    updated: true,
+    title: '-----------\n | Game End | \n  -----------  \n\n\n Enter your name:',
+    options: [
+        { letter: 'A', index: 0 },
+        { letter: 'A', index: 0 },
+        { letter: 'A', index: 0 },
+    ],
+    infoTip: 'User arrow keys to select letters and press enter to submit.',
+    selected: 0,
+    submited: null,
+};
+
+const AVAILIBLE_CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+const DEFAULT_LEADERBOARDS_CONTENT = {
+    updated: false,
+    wait: true,
+    ready: false,
+    title: 'Leaderboards',
+    options: [
+        'Mode: ',
+        'Lives: ',
+    ],
+    optionsValues: [
+        'Normal',
+        3,
+    ],
+    header: [
+        'Rank',
+        'Name',
+        'Level',
+        'Score',
+        'Time',
+    ],
+};
+
+const BANNED_NAMES = [
+    "CUM",
+    "ASS",
+    "FAG",
+    "SEX"
+]
+
+const REJECTED_NAME_REPLACEMENT = "NAY"
+
+/**
+ * Returns the modulo of two numbers.
+ * @param {Number} n - The dividend.
+ * @param {Number} m - The divisor.
+ * @returns {Number} The modulo of the two numbers.
+ */
+function mod(n, m) {
+    return ((n % m) + m) % m;
+}
+
+/**
+ * Represents a game.
+ */
+export class Game {
+    /**
+     * Creates a new Game object.
+     * @param {Window} window - The window object.
+     * @param {PIXI.Application} app - The PIXI application.
+     * @param {Object} textures - The textures object.
+     * @param {SoundManager} soundManager - The sound manager object.
+     * @param {Object} keyInputs - The key inputs object.
+     * @param {Object} windowChange - The window change object.
+     * @returns {Game} The new Game object.
+     */
+    constructor(window, app, textures, soundManager, keyInputs, windowChange) {
+        this.window = window;
+        this.app = app;
+        this.textures = textures;
+        this.soundManager = soundManager;
+        this.keyInputs = keyInputs;
+        this.windowChange = windowChange;
+
+        this.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+        this.gameState = new GameState(this.window);
+        this.screenContent = null;
+        this.recievedStats = null;
+        this.drawingManager = null;
+        this.screenWidth = this.app.screen.width;
+        this.screenHeight = this.app.screen.height;
+    }
+
+    /**
+     * Binds the arrow keys to functions to operate the menu.
+     * @param {Function} enterCallback - The callback function to call when the enter key is pressed.
+     * @param {Function} leftCallback - The callback function to call when the left key is pressed.
+     * @param {Function} rightCallback - The callback function to call when the right key is pressed.
+     */
+    #setupOptionsKeys(enterCallback, leftCallback = null, rightCallback = null) {
+        this.keyInputs.up.press = () => {
+            if (!this.keyInputs.down.isDown) {
+                this.screenContent.selected = mod(this.screenContent.selected - 1, this.screenContent.options.length);
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+        this.keyInputs.down.press = () => {
+            if (!this.keyInputs.up.isDown) {
+                this.screenContent.selected = mod(this.screenContent.selected + 1, this.screenContent.options.length);
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+        this.keyInputs.enter.press = enterCallback;
+        if (leftCallback != null) {
+            this.keyInputs.left.press = leftCallback;
+        }
+        if (rightCallback != null) {
+            this.keyInputs.right.press = rightCallback;
+        }
+    }
+
+    /**
+     * Unbinds the arrow keys from functions.
+     */
+    #unsetOptionsKeys() {
+        this.keyInputs.up.press = undefined;
+        this.keyInputs.down.press = undefined;
+        this.keyInputs.enter.press = undefined;
+        this.keyInputs.left.press = undefined;
+        this.keyInputs.right.press = undefined;
+    }
+
+    /**
+     * Cleans up menu binds and content.
+     */
+    #cleanUpMenu() {
+        this.#unsetOptionsKeys();
+        this.screenContent = null;
+    }
+
+    /**
+     * Initializes the main menu.
+     */
+    #initMainMenu() {
+        // copy the default content
+        this.screenContent = { ...DEFAULT_MAIN_MENU_CONTENT }
+
+        // bind key inputs to functions to update the content
+        let enterCallback = () => {
+            if (this.screenContent.selected != null) {
+                switch (this.screenContent.selected) {
+                    case 0:
+                        this.screenContent.submited = this.screenContent.selected;
+                        break;
+                    case 1:
+                        this.screenContent.submited = this.screenContent.selected;
+                        break;
+                    case 2:
+                        this.screenContent.submited = this.screenContent.selected;
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
+                        break;
+                }
+                this.soundManager.playCursorSubmit();
+                this.screenContent.updated = true;
+            }
+        };
+        this.#setupOptionsKeys(enterCallback);
+    }
+
+    /**
+     * Handles updating the main menu.
+     */
+    #handleMainMenuUpdate() {
+        if (this.screenContent == null) {
+            this.#initMainMenu();
+            this.drawingManager = new MainMenuDrawingManager(this.app, this.textures, this.screenContent);
+            this.drawingManager.draw();
+        }
+
+        let switchTo = null;
+
+        if (this.screenContent.updated) {
+            // if selected option was submited, switch to the corresponding state
+            if (this.screenContent.submited != null) {
+                console.log(MODULE_NAME_PREFIX, 'Switching to:', this.screenContent.options[this.screenContent.submited]);
+                switch (this.screenContent.submited) {
+                    case 0:
+                        switchTo = GAME_STATES.GAME_SESSION;
+                        break;
+                    case 1:
+                        switchTo = GAME_STATES.SETTINGS;
+                        break;
+                    case 2:
+                        switchTo = GAME_STATES.LEADERBOARDS;
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option submited.');
+                        break;
+                }
+                if (switchTo != null) {
+                    this.#cleanUpMenu();
+                    this.drawingManager.cleanUp();
+                    this.drawingManager = null;
+                    this.gameState.switchState(switchTo);
+                    switchTo = null;
+                }
+            }
+            // otherwise, draw the main menu updated content
+            else {
+                this.drawingManager.redraw();
+                console.log(MODULE_NAME_PREFIX, 'Selected:', this.screenContent.options[this.screenContent.selected]);
+                this.screenContent.updated = false;
+            }
+        }
+    }
+
+    /**
+     * Initializes the game session.
+     */
+    #initGameSession() {
+        this.screenContent = {};
+        this.drawingManager = new GameSessionManager(this.app, this.settings, this.screenContent, this.textures, this.soundManager, this.keyInputs, ARENA_ROWS, ARENA_COLS);
+        this.drawingManager.start();
+    }
+
+    #handleGameSessionUpdate(delta) {
+        if (this.screenContent === null) {
+            this.#initGameSession();
+        }
+        if (this.drawingManager.ended === true) {
+            this.drawingManager.cleanUp();
+
+            // user left the game
+            if (this.drawingManager.userLeave === true) {
+                this.drawingManager = null;
+                if (this.screenContent.nullable === true) {
+                    this.screenContent = null;
+                }
+
+                this.gameState.switchState(GAME_STATES.MAIN_MENU);
+            }
+            // game ended with a win or loss
+            else {
+                this.recievedStats = this.drawingManager.stats;
+                this.recievedStats.lives = this.settings.lives;
+                this.recievedStats.mode = this.settings.endless ? 'endless' : 'normal';
+                this.drawingManager = null;
+                if (this.screenContent.nullable === true) {
+                    this.screenContent = null;
+                }
+
+                this.gameState.switchState(GAME_STATES.GAME_END);
+            }
+        }
+        else {
+            this.drawingManager.update(delta);
+        }
+    }
+
+    /**
+     * Returns the settings content.
+     * @returns {Object} The settings content.
+     */
+    #getSettingsContent() {
+        let content = { ...DEFAULT_SETTINGS_CONTENT };
+        content.optionsValues[0] = this.settings.lives;
+        content.optionsValues[1] = this.settings.volume;
+        content.optionsValues[2] = this.settings.endless;
+        return content;
+    }
+
+    /**
+     * Initializes the settings.
+     */
+    #initSettings() {
+        this.screenContent = this.#getSettingsContent();
+
+        // bind key inputs to functions to update the content
+        const enterCallback = () => {
+            if (this.screenContent.selected != null) {
+                switch (this.screenContent.selected) {
+                    case 0:
+                        this.screenContent.optionsValues[this.screenContent.selected] = mod(this.screenContent.optionsValues[this.screenContent.selected] + 1, DEFAULT_SETTINGS.lives + 1);
+                        this.settings.lives = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    case 1:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.volume = this.screenContent.optionsValues[this.screenContent.selected];
+                        this.soundManager.soundEnabled = this.settings.volume;
+                        break;
+                    case 2:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.endless = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    case 3:
+                        this.screenContent.submited = this.screenContent.selected;
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
+                        break;
+                }
+                this.soundManager.playCursorSubmit();
+                this.screenContent.updated = true;
+            }
+        };
+
+        const leftCallback = () => {
+            if (!this.keyInputs.right.isDown) {
+                switch (this.screenContent.selected) {
+                    case 0:
+                        this.screenContent.optionsValues[this.screenContent.selected] = mod(this.screenContent.optionsValues[this.screenContent.selected] - 1, DEFAULT_SETTINGS.lives + 1);
+                        this.settings.lives = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    case 1:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.volume = this.screenContent.optionsValues[this.screenContent.selected];
+                        this.soundManager.soundEnabled = this.settings.volume;
+                        break;
+                    case 2:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.endless = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
+                        break;
+                }
+                this.soundManager.playCursorSubmit();
+                this.screenContent.updated = true;
+            }
+        };
+
+        const rightCallback = () => {
+            if (!this.keyInputs.left.isDown) {
+                switch (this.screenContent.selected) {
+                    case 0:
+                        this.screenContent.optionsValues[this.screenContent.selected] = mod(this.screenContent.optionsValues[this.screenContent.selected] + 1, DEFAULT_SETTINGS.lives + 1);
+                        this.settings.lives = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    case 1:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.volume = this.screenContent.optionsValues[this.screenContent.selected];
+                        this.soundManager.soundEnabled = this.settings.volume;
+                        break;
+                    case 2:
+                        this.screenContent.optionsValues[this.screenContent.selected] = !this.screenContent.optionsValues[this.screenContent.selected];
+                        this.settings.endless = this.screenContent.optionsValues[this.screenContent.selected];
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option selected.');
+                        break;
+                }
+                this.soundManager.playCursorSubmit();
+                this.screenContent.updated = true;
+            }
+        };
+        this.#setupOptionsKeys(enterCallback, leftCallback, rightCallback);
+    }
+
+    /**
+     * Handles updating the settings.
+     */
+    #handleSettingsUpdate() {
+        if (this.screenContent === null) {
+            this.#initSettings();
+            this.drawingManager = new SettingsDrawingManager(this.app, this.textures, this.screenContent);
+        }
+
+        let switchToMainMenu = false;
+
+        if (this.screenContent.updated) {
+            // if selected option was submited, switch to the corresponding state
+            if (this.screenContent.submited != null) {
+                console.log(MODULE_NAME_PREFIX, 'Switching to:', this.screenContent.options[this.screenContent.submited]);
+                switch (this.screenContent.submited) {
+                    case 3:
+                        switchToMainMenu = true;
+                        break;
+                    default:
+                        console.error(MODULE_NAME_PREFIX, 'Invalid option submited.');
+                        break;
+                }
+                if (switchToMainMenu) {
+                    this.#cleanUpMenu();
+                    this.drawingManager.cleanUp();
+                    this.gameState.switchState(GAME_STATES.MAIN_MENU);
+                    switchToMainMenu = false;
+                }
+            }
+            // otherwise, draw the settings updated content
+            else {
+                this.drawingManager.redraw();
+                console.log(MODULE_NAME_PREFIX, 'Selected:', this.screenContent.options[this.screenContent.selected]);
+                this.screenContent.updated = false;
+            }
+        }
+    }
+
+    /**
+     * Sets up the keys for the leaderboards screen.
+     */
+    #setupLeaderboardsKeys() {
+        // function to change the mode
+        const changeModeFunc = () => {
+            if (this.screenContent.ready) {
+                this.screenContent.optionsValues[0] = this.screenContent.optionsValues[0] === 'Normal' ? 'Endless' : 'Normal';
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+        
+        this.keyInputs.left.press = () => {
+            if (!this.keyInputs.down.isDown &amp;&amp; this.screenContent.ready) {
+                changeModeFunc();
+            }
+        }
+
+        this.keyInputs.right.press = () => {
+            if (!this.keyInputs.up.isDown &amp;&amp; this.screenContent.ready) {
+                changeModeFunc();
+            }
+        }
+
+        // function to change the lives
+        const changeLivesFunc = (delta) => {
+            if (this.screenContent.ready) {
+                this.screenContent.optionsValues[1] = mod(this.screenContent.optionsValues[1] + delta, 4);
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+
+        this.keyInputs.up.press = () => {
+            if (this.screenContent.ready) {
+                changeLivesFunc(1);
+            }
+        }
+
+        this.keyInputs.down.press = () => {
+            if (this.screenContent.ready) {
+                changeLivesFunc(-1);
+            }
+        }
+
+        // function to return to the main menu
+        const returnToMainMenuFunc = () => {
+            this.#cleanUpMenu();
+            this.drawingManager.cleanUp();
+            this.drawingManager = null;
+            this.screenContent = null;
+            this.gameState.switchState(GAME_STATES.MAIN_MENU);
+            this.soundManager.playCursorSubmit();
+        }
+
+        this.keyInputs.enter.press = () => {
+            returnToMainMenuFunc();
+        }
+
+        this.keyInputs.esc.press = () => {
+            returnToMainMenuFunc();
+        }
+    }
+
+    /**
+     * Initializes the leaderboards.
+     */
+    #initLeaderboards() {
+        this.screenContent = JSON.parse(JSON.stringify(DEFAULT_LEADERBOARDS_CONTENT));
+        $.ajax({
+            url: "/api/scores",
+            type: "GET",
+            success: (response) => {
+                console.log(MODULE_NAME_PREFIX, 'Leaderboards:', response);
+                this.screenContent.leaderboards = response;
+                this.screenContent.wait = false;
+            },
+            error: (xhr, status, error) => {
+                console.error(MODULE_NAME_PREFIX, 'Error:', error);
+            }
+        });
+
+        this.#setupLeaderboardsKeys();
+    }
+
+    /**
+     * Handles updating the leaderboards.
+     */
+    #handleLeaderboardsUpdate() {
+        if (this.screenContent === null) {
+            this.#initLeaderboards();
+        }
+        if (this.drawingManager === null) {
+            this.drawingManager = new LeaderboardsDrawingManager(this.app, this.textures, this.screenContent);
+            
+            // if the leaderboards are not ready, draw the wait screen
+            if (this.screenContent.wait) {
+                this.drawingManager.drawWait();
+            }
+        }
+
+        // if the leaderboards are ready, draw them
+        if (!this.screenContent.wait &amp;&amp; !this.screenContent.ready) {
+            this.drawingManager.draw();
+            this.screenContent.ready = true;
+            // now can be false because the leaderboards were already drawn
+        }
+
+        // if the leaderboards are ready and updated, redraw them
+        if (this.screenContent.ready &amp;&amp; this.screenContent.updated) {
+            this.drawingManager.redraw();
+            this.screenContent.updated = false;
+        }
+    }
+
+    /**
+     * Sets up the keys for the game end screen.
+     */
+    #setupGameEndKeys() {
+        this.keyInputs.up.press = () => {
+            if (!this.keyInputs.down.isDown) {
+                this.screenContent.options[this.screenContent.selected].index = mod(this.screenContent.options[this.screenContent.selected].index + 1, AVAILIBLE_CHARSET.length);
+                this.screenContent.options[this.screenContent.selected].letter = AVAILIBLE_CHARSET[this.screenContent.options[this.screenContent.selected].index];
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+        this.keyInputs.down.press = () => {
+            if (!this.keyInputs.up.isDown) {
+                this.screenContent.options[this.screenContent.selected].index = mod(this.screenContent.options[this.screenContent.selected].index - 1, AVAILIBLE_CHARSET.length);
+                this.screenContent.options[this.screenContent.selected].letter = AVAILIBLE_CHARSET[this.screenContent.options[this.screenContent.selected].index];
+                this.soundManager.playCursor();
+                this.screenContent.updated = true;
+            }
+        }
+        this.keyInputs.left.press = () => {
+            this.screenContent.selected = mod(this.screenContent.selected - 1, this.screenContent.options.length);
+            this.soundManager.playCursor();
+            this.screenContent.updated = true;
+        }
+        this.keyInputs.right.press = () => {
+            this.screenContent.selected = mod(this.screenContent.selected + 1, this.screenContent.options.length);
+            this.soundManager.playCursor();
+            this.screenContent.updated = true;
+        }
+        this.keyInputs.enter.press = () => {
+            // get the name from the selected letters
+            let name = '';
+            for (let i = 0; i &lt; this.screenContent.options.length; i++) {
+                name += this.screenContent.options[i].letter;
+            }
+            for (let banned of BANNED_NAMES) {
+                name = name.replace(banned, REJECTED_NAME_REPLACEMENT);
+            }
+
+            this.screenContent.submited = name;
+            console.log(MODULE_NAME_PREFIX, 'Submited name:', this.screenContent.submited);
+            
+            // prepare the post object
+            const post = {
+                name: this.screenContent.submited,
+                score: this.recievedStats.score,
+                time: this.recievedStats.time,
+                lives: this.recievedStats.lives,
+                mode: this.recievedStats.mode,
+                level: this.recievedStats.level,
+            };
+            
+            // submit the stats to the server
+            console.log(MODULE_NAME_PREFIX, 'Submitting:', post);
+            $.ajax({
+                // current url
+                url: "/api/submit_score", 
+                type: "POST",
+                data: JSON.stringify(post),
+                contentType: "application/json",
+                success: function(response) {
+                    console.log(MODULE_NAME_PREFIX, 'Response:', response);
+                },
+                error: function(xhr, status, error) {
+                    console.error(MODULE_NAME_PREFIX, 'Error:', error);
+                }
+            });
+            
+            this.#cleanUpMenu();
+            this.drawingManager.cleanUp();
+            this.gameState.switchState(GAME_STATES.MAIN_MENU);
+        }
+    }
+
+    /**
+     * Handles the game end screen.
+     */
+    #handleGameEndScreen() {
+        if (this.screenContent === null) {
+            // create copy of the default content
+            this.screenContent = JSON.parse(JSON.stringify(DEFAULT_GAME_END_CONTENT));
+            this.#setupGameEndKeys();
+        }
+
+        if (this.drawingManager === null) {
+            this.drawingManager = new EndGameDrawingManager(this.app, this.textures, this.screenContent);
+            this.drawingManager.draw();
+        }
+
+        if (this.screenContent.updated) {
+            this.drawingManager.redraw();
+            console.log(MODULE_NAME_PREFIX, 'Selected index:', this.screenContent.selected);
+            this.screenContent.options.forEach((option, index) => {
+                console.log(MODULE_NAME_PREFIX, `Option ${index}: ${option.letter}`);
+            });
+            this.screenContent.updated = false;
+        }
+    }
+
+    /**
+     * Handles updating the game.
+     */
+    update(delta) {
+        if (this.windowChange.resized) {
+            this.drawingManager.redraw();
+            this.windowChange.resized = false;
+        }
+
+        switch (this.gameState.state) {
+            case GAME_STATES.MAIN_MENU:
+                this.#handleMainMenuUpdate();
+                break;
+            case GAME_STATES.GAME_SESSION:
+                this.#handleGameSessionUpdate(delta);
+                break;
+            case GAME_STATES.SETTINGS:
+                this.#handleSettingsUpdate();
+                break;
+            case GAME_STATES.LEADERBOARDS:
+                this.#handleLeaderboardsUpdate();
+                break;
+            case GAME_STATES.GAME_END:
+                this.#handleGameEndScreen();
+                break;
+            default:
+                console.error(MODULE_NAME_PREFIX, 'Invalid game state.');
+                break;
+        }
+    }
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Arena.html">Arena</a></li><li><a href="Bomb_Bomb.html">Bomb</a></li><li><a href="BreakableWall_BreakableWall.html">BreakableWall</a></li><li><a href="EndGameDrawingManager.html">EndGameDrawingManager</a></li><li><a href="Enemy.html">Enemy</a></li><li><a href="Entity.html">Entity</a></li><li><a href="Explosion_Explosion.html">Explosion</a></li><li><a href="ExplosionInstance.html">ExplosionInstance</a></li><li><a href="Game.html">Game</a></li><li><a href="GameSessionManager.html">GameSessionManager</a></li><li><a href="GameSessionState.html">GameSessionState</a></li><li><a href="GameState.html">GameState</a></li><li><a href="MainMenuDrawingManager.html">MainMenuDrawingManager</a></li><li><a href="Player_Player.html">Player</a></li><li><a href="SettingsDrawingManager.html">SettingsDrawingManager</a></li><li><a href="SoundManager.html">SoundManager</a></li></ul><h3>Global</h3><ul><li><a href="global.html#getBespokeRectText">getBespokeRectText</a></li><li><a href="global.html#getFontSize">getFontSize</a></li><li><a href="global.html#getProperDimensions">getProperDimensions</a></li><li><a href="global.html#getStringWithSafeMargin">getStringWithSafeMargin</a></li><li><a href="global.html#keyboard">keyboard</a></li><li><a href="global.html#loadAssetsManifest">loadAssetsManifest</a></li><li><a href="global.html#loadTextures">loadTextures</a></li><li><a href="global.html#mod">mod</a></li><li><a href="global.html#parseTime">parseTime</a></li><li><a href="global.html#PIXI_INIT_CONFIG">PIXI_INIT_CONFIG</a></li><li><a href="global.html#prepareAssets">prepareAssets</a></li><li><a href="global.html#prepareGameAssets">prepareGameAssets</a></li><li><a href="global.html#resizeCanvas">resizeCanvas</a></li><li><a href="global.html#setup">setup</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Sun Jun 09 2024 19:21:47 GMT+0200 (Central European Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

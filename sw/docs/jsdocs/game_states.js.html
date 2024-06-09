@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: game_states.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: game_states.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const MODULE_NAME_PREFIX = 'game_states.js - ';
+
+export const GAME_STATES = {
+    NONE: -1,
+    MAIN_MENU: 0,
+    GAME_SESSION: 1,
+    GAME_END: 2,
+    SETTINGS: 3,
+    LEADERBOARDS: 4
+};
+
+const GAME_STATES_MAP = {
+    NONE: {'id': -1, 'name': 'NONE'},
+    MAIN_MENU: {'id': 0, 'name': 'MAIN_MENU'},
+    GAME_SESSION: {'id': 1, 'name': 'GAME_SESSION'},
+    // GAME_END: {'id': 2, 'name': 'GAME_END'},
+    SETTINGS: {'id': 3, 'name': 'SETTINGS'},
+    LEADERBOARDS: {'id': 4, 'name': 'LEADERBOARDS'}
+};
+
+/**
+ * Represents the game state.
+ */
+export class GameState {
+    /**
+     * Creates a new GameState object.
+     * @param {Window} window - The window object.
+     */
+    constructor(window) {
+        this._state = GAME_STATES.NONE;
+        this.window = window;
+
+        this.initState();
+    }
+
+    /**
+     * Gets the game state.
+     * @returns {Number} The game state.
+     */
+    get state() {
+        return this._state;
+    }
+
+    /**
+     * Gets the game state.
+     * @returns {Number} The game state.
+     */
+    set state(state) {
+        this._state = state;
+    }
+
+    /**
+     * Sets up the scene based on the current game state.
+     */
+    initState() {
+        switch (this._state) {
+            case GAME_STATES.NONE:
+                this._state = GAME_STATES.MAIN_MENU;
+                console.log(MODULE_NAME_PREFIX + "Game state set to MAIN_MENU");
+                break;
+            default:
+                console.error(MODULE_NAME_PREFIX + "Invalid game state for setup: " + this._state);
+                throw new Error("Invalid game state for setup: " + this._state);
+        }
+    }
+
+    /**
+     * Prints the current game state to the console.
+     */
+    printGameState() {
+        let currentState = null;
+        switch (this._state) {
+            case GAME_STATES.NONE:
+                currentState = GAME_STATES_MAP.NONE;
+                break;
+            case GAME_STATES.MAIN_MENU:
+                currentState = GAME_STATES_MAP.MAIN_MENU;
+                break;
+            case GAME_STATES.GAME_SESSION:
+                currentState = GAME_STATES_MAP.GAME_SESSION;
+                break;
+            case GAME_STATES.GAME_END:
+                currentState = GAME_STATES_MAP.GAME_END;
+                break;
+            case GAME_STATES.SETTINGS:
+                currentState = GAME_STATES_MAP.SETTINGS;
+                break;
+            case GAME_STATES.LEADERBOARDS:
+                currentState = GAME_STATES_MAP.LEADERBOARDS;
+                break;
+            default:
+                currentState = "Invalid game state: " + this._state;
+                break;
+        }
+
+        console.log(MODULE_NAME_PREFIX + "Current game state: " + JSON.stringify(currentState));
+    }
+
+    /**
+     * Sets the game state.
+     * @param {Number} state - The game state to set.
+     */
+    switchState(state) {
+        if (this._state === GAME_STATES.NONE) {
+            throw new Error("Logic Error: Current game state is NONE");
+        }
+        if (state === this._state) {
+            throw new Error("Logic Error: Switch called with same state");
+        }
+
+        // swithing to state:
+        switch (state) {
+            case GAME_STATES.NONE:
+                throw new Error("Logic Error: Cannot set game state to NONE");
+            
+            case GAME_STATES.MAIN_MENU:
+                this._state = GAME_STATES.MAIN_MENU;
+                console.log(MODULE_NAME_PREFIX + "Game state set to MAIN_MENU");
+                break;
+            
+            case GAME_STATES.GAME_SESSION:
+                if (this._state !== GAME_STATES.MAIN_MENU) {
+                    throw new Error("Logic Error: Cannot set game state to GAME_SESSION from " + this._state);
+                }
+                this._state = GAME_STATES.GAME_SESSION;
+                console.log(MODULE_NAME_PREFIX + "Game state set to GAME_SESSION");
+                break;
+            
+            case GAME_STATES.GAME_END:
+                if (this._state !== GAME_STATES.GAME_SESSION) {
+                    throw new Error("Logic Error: Cannot set game state to GAME_END from " + this._state);
+                }
+                this._state = GAME_STATES.GAME_END;
+                console.log(MODULE_NAME_PREFIX + "Game state set to GAME_END");
+                break;
+            
+            case GAME_STATES.SETTINGS:
+                if (this._state !== GAME_STATES.MAIN_MENU) {
+                    throw new Error("Logic Error: Cannot set game state to SETTINGS from " + this._state);
+                }
+                this._state = GAME_STATES.SETTINGS;
+                console.log(MODULE_NAME_PREFIX + "Game state set to SETTINGS");
+                break;
+            
+            case GAME_STATES.LEADERBOARDS:
+                if (this._state !== GAME_STATES.MAIN_MENU /*&amp;&amp; this._state !== GAME_STATES.GAME_END*/) {
+                    throw new Error("Logic Error: Cannot set game state to LEADERBOARDS from " + this._state);
+                }
+                this._state = GAME_STATES.LEADERBOARDS;
+                console.log(MODULE_NAME_PREFIX + "Game state set to LEADERBOARDS");
+                break;
+            
+            // should never happen
+            default:
+                throw new Error("Logic Error: Invalid game state: " + state);
+        }
+    }
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Arena.html">Arena</a></li><li><a href="Bomb_Bomb.html">Bomb</a></li><li><a href="BreakableWall_BreakableWall.html">BreakableWall</a></li><li><a href="EndGameDrawingManager.html">EndGameDrawingManager</a></li><li><a href="Enemy.html">Enemy</a></li><li><a href="Entity.html">Entity</a></li><li><a href="Explosion_Explosion.html">Explosion</a></li><li><a href="ExplosionInstance.html">ExplosionInstance</a></li><li><a href="Game.html">Game</a></li><li><a href="GameSessionManager.html">GameSessionManager</a></li><li><a href="GameSessionState.html">GameSessionState</a></li><li><a href="GameState.html">GameState</a></li><li><a href="MainMenuDrawingManager.html">MainMenuDrawingManager</a></li><li><a href="Player_Player.html">Player</a></li><li><a href="SettingsDrawingManager.html">SettingsDrawingManager</a></li><li><a href="SoundManager.html">SoundManager</a></li></ul><h3>Global</h3><ul><li><a href="global.html#getBespokeRectText">getBespokeRectText</a></li><li><a href="global.html#getFontSize">getFontSize</a></li><li><a href="global.html#getProperDimensions">getProperDimensions</a></li><li><a href="global.html#getStringWithSafeMargin">getStringWithSafeMargin</a></li><li><a href="global.html#keyboard">keyboard</a></li><li><a href="global.html#loadAssetsManifest">loadAssetsManifest</a></li><li><a href="global.html#loadTextures">loadTextures</a></li><li><a href="global.html#mod">mod</a></li><li><a href="global.html#parseTime">parseTime</a></li><li><a href="global.html#PIXI_INIT_CONFIG">PIXI_INIT_CONFIG</a></li><li><a href="global.html#prepareAssets">prepareAssets</a></li><li><a href="global.html#prepareGameAssets">prepareGameAssets</a></li><li><a href="global.html#resizeCanvas">resizeCanvas</a></li><li><a href="global.html#setup">setup</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Sun Jun 09 2024 19:21:47 GMT+0200 (Central European Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
