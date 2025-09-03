@@ -1,4 +1,4 @@
-<style>body {text-align: justify}</style>
+<!-- <style>body {text-align: justify}</style> -->
 
 # A Simple JavaScript Bomberman Clone in PIXI.js
 

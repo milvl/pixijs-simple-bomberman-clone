@@ -1,4 +1,4 @@
-<style>body {text-align: justify}</style>
+<!-- <style>body {text-align: justify}</style> -->
 
 # Jednoduchý JavaScript klon hry Bomberman v PIXI.js
 
