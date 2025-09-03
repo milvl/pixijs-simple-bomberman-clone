@@ -221,6 +221,7 @@ export class Game {
             this.#initMainMenu();
             this.drawingManager = new MainMenuDrawingManager(this.app, this.textures, this.screenContent);
             this.drawingManager.draw();
+            console.log(MODULE_NAME_PREFIX, 'Main menu initialized.');
         }
 
         let switchTo = null;
@@ -515,6 +516,11 @@ export class Game {
             url: "/api/scores",
             type: "GET",
             success: (response) => {
+                // if response is not an object, log an error
+                if (typeof response !== 'object' || response === null) {
+                    console.error(MODULE_NAME_PREFIX, 'Invalid response from server:', response);
+                    return;
+                }
                 console.log(MODULE_NAME_PREFIX, 'Leaderboards:', response);
                 this.screenContent.leaderboards = response;
                 this.screenContent.wait = false;
@@ -541,6 +547,12 @@ export class Game {
             if (this.screenContent.wait) {
                 this.drawingManager.drawWait();
             }
+        }
+
+        // if the leaderboards aren't ready but screen changed, redraw the wait screen
+        if (this.screenContent.wait && this.screenContent.updated) {
+            this.drawingManager.drawWait();
+            this.screenContent.updated = false;
         }
 
         // if the leaderboards are ready, draw them

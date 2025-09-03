@@ -38,10 +38,15 @@ function getFontSize(textString, maxWidth, maxHeight, fontFamily = 'Arial', alig
        text.style.fontSize = fontSize;
    }
    fontSize--;
-   while (text.width > maxWidth) {
+   while (text.width > maxWidth && fontSize > 0) {
        fontSize--;
        text.style.fontSize = fontSize;
    }
+   if (fontSize <= 0) {
+       console.warn(MODULE_NAME_PREFIX, 'getFontSize: Font size is too small for text:', textString);
+       return 0;
+   }
+
    return fontSize;
 }
 
@@ -103,7 +108,7 @@ function parseTime(milliseconds) {
  * Handles the drawing of the main menu.
  */
 export class MainMenuDrawingManager {
-    LOGO_TEXT_STRING = 'KIV/UUR - BomberMan Clone';
+    LOGO_TEXT_STRING = 'Simple BomberMan Clone';
     LOGO_WIDTH_SCALE = 1/2;
     LOGO_HEIGHT_SCALE = 1/5;
     LOGO_Y_OFFSET_SCALE = 1/10;
@@ -825,8 +830,12 @@ export class LeaderboardsDrawingManager {
 
     redraw() {
         this.app.stage.removeChildren();
-        this.draw();
-        
+        if (this.screenContent.wait) {
+            this.drawWait();
+        }
+        else{
+            this.draw();
+        }
     }
 
     cleanUp() {

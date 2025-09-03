@@ -9,17 +9,42 @@ body {
     height: 100vh;
     width: 100vw;
     gap: 2vw;
+    background-image: url('../img/background.png');
+    background-size: cover; 
+    background-repeat: no-repeat; 
+    background-position: center; 
 }
 
 #game {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 65vw;
-    height: 80vh;
+    padding-top: 22.75vh;
 }
 
-#controlHints {
+.fullscreen {
+  background-image: none !important;
+  background-color: black !important;
+}
+
+#game.fullscreen {
+  padding-top: 0 !important;
+}
+
+/* #fullscreenButton {
+    position: absolute;
+    bottom: 1vh;
+    right: 32.5vh;
+    padding: 0.5vh 1vh;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: none;
+    border-radius: 0.5vh;
+    font-size: 1.5vh;
+    cursor: pointer;
+    z-index: 1000; /* ensure the button is above other elements *//*
+} */
+
+/* #controlHints {
     padding: 1vh;
     width: 10vw;
     display: flex;
@@ -45,7 +70,7 @@ body {
     border: 0.15vh solid white;
     border-radius: 1vh;
     margin-right: 5vh;
-}
+} */
 
 @media all and (max-width: 90vw) {
     #controlHints, #specialThanks {

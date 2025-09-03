@@ -72,6 +72,7 @@ export class Enemy extends Entity {
     redraw(prevScreenSize) {
         this.remainingPath = [];
         super.redraw(prevScreenSize);
+        this.movementSpeed = this.app.screen.height * this.#MOVEMENT_SPEED_SCALE_FACTOR_TO_SCREEN_HEIGHT;
     }
 
     /**

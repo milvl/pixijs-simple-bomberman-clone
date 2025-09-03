@@ -8,7 +8,13 @@ let MODULE_NAME_PREFIX = 'app.js - ';
 
 const RATIO_WIDTH = 21;
 const RATIO_HEIGHT = 11 * 1.2;      // 21:11 aspect ratio with hud taking up 20% of the height // TODO better way to calculate this
-const GAME_WINDOW_SCALE = 0.8;
+const DEFAULT_GAME_WINDOW_SCALE = 0.6;
+const FULLSCREEN_GAME_WINDOW_SCALE = 1.0;
+let fullscreen = false;
+let lastSizes = {
+    width: 0,
+    height: 0
+};
 
 const TEXTURES = {};
 const AUDIO = {};
@@ -91,37 +97,86 @@ async function prepareAssets() {
  * @throws {Error} If there was an error getting the proper dimensions.
  */
 function getProperDimensions() {
-    // find the limiting dimension
-    const viewportAspectRatio = window.innerWidth / window.innerHeight;
-    const gameAspectRatio = RATIO_WIDTH / RATIO_HEIGHT;
+    // // find the limiting dimension
+    // const viewportAspectRatio = window.innerWidth / window.innerHeight;
+    // const gameAspectRatio = RATIO_WIDTH / RATIO_HEIGHT;
+    // const isFullscreen = window.innerWidth  === screen.availWidth && window.innerHeight === screen.availHeight;
 
-    let width = null;
-    let height = null;
+    // fullscreen = isFullscreen;
+    // const windowScale = fullscreen ? FULLSCREEN_GAME_WINDOW_SCALE : DEFAULT_GAME_WINDOW_SCALE;
 
-    // if the limiting dimension is the height
-    if (viewportAspectRatio >= gameAspectRatio) {
-        const scaleFactor = window.innerHeight / RATIO_HEIGHT;
-        height = window.innerHeight;
-        width = RATIO_WIDTH * scaleFactor;
+    // const bodyElem = document.body;
+    // const gameElem = document.getElementById('game');
+    // if (fullscreen) {
+    //     bodyElem.classList.add('fullscreen');
+    //     gameElem.classList.add('fullscreen');
+    // }
+    // else {
+    //     bodyElem.classList.remove('fullscreen');
+    //     gameElem.classList.remove('fullscreen');
+    // }
 
-        if (height >= window.screen.height * GAME_WINDOW_SCALE) {
-            width *= GAME_WINDOW_SCALE;
-            height *= GAME_WINDOW_SCALE;
-        }
-    }
-    // if the limiting dimension is the width
-    else {
-        const scale_factor = window.innerWidth / RATIO_WIDTH;
-        width = window.innerWidth;
-        height = RATIO_HEIGHT * scale_factor;
+    // let width = null;
+    // let height = null;
 
-        if (width >= window.screen.width * GAME_WINDOW_SCALE) {
-            width *= GAME_WINDOW_SCALE;
-            height *= GAME_WINDOW_SCALE;
-        }
-    }
+    // // if the limiting dimension is the height
+    // if (viewportAspectRatio >= gameAspectRatio) {
+    //     const scaleFactor = window.innerHeight / RATIO_HEIGHT;
+    //     height = window.innerHeight;
+    //     width = RATIO_WIDTH * scaleFactor;
+
+    //     if (height >= window.screen.height * windowScale) {
+    //         width *= windowScale;
+    //         height *= windowScale;
+    //     }
+    // }
+    // // if the limiting dimension is the width
+    // else {
+    //     const scale_factor = window.innerWidth / RATIO_WIDTH;
+    //     width = window.innerWidth;
+    //     height = RATIO_HEIGHT * scale_factor;
+
+    //     if (width >= window.screen.width * windowScale) {
+    //         width *= windowScale;
+    //         height *= windowScale;
+    //     }
+    // }
     
-    return { width, height };
+    // return { width, height };
+
+    // viewport size (works the same on Windows, macOS, Linux…)
+    const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+
+    const isFull = (window.innerWidth >= screen.availWidth && window.innerHeight >= screen.availHeight);
+    fullscreen = isFull;
+    const windowScale = isFull ? FULLSCREEN_GAME_WINDOW_SCALE : DEFAULT_GAME_WINDOW_SCALE;
+
+    console.log(MODULE_NAME_PREFIX, 'window.innerWidth:', window.innerWidth);
+    console.log(MODULE_NAME_PREFIX, 'window.innerHeight:', window.innerHeight);
+    console.log(MODULE_NAME_PREFIX, 'screen.availWidth:', screen.availWidth);
+    console.log(MODULE_NAME_PREFIX, 'screen.availHeight:', screen.availHeight);
+
+    const maxW = vw * windowScale;
+    const maxH = vh * windowScale;
+
+    const aspectScale = RATIO_WIDTH / RATIO_HEIGHT;
+
+    let width, height;
+    if (maxW / maxH > aspectScale) {
+        // bounding box is wider than game: height is the limiter
+        height = Math.round(maxH);
+        width  = Math.round(maxH * aspectScale);
+    } else {
+        // bounding box is narrower than game: width is the limiter
+        width  = Math.round(maxW);
+        height = Math.round(maxW / aspectScale);
+    }
+
+    return {
+        width: width,
+        height: height
+    };
 }
 
 /**
@@ -130,14 +185,40 @@ function getProperDimensions() {
  * @param {Object} windowChange - The window change object.
  */
 function resizeCanvas(app, windowChange) {
+    let lastFullscreen = fullscreen;
     const { width, height } = getProperDimensions();
+
+    if (lastSizes.width === width && lastSizes.height === height) {
+        // no change in size, no need to resize
+        return;
+    }
+    lastSizes.width = width;
+    lastSizes.height = height;
 
     // resize the canvas
     app.renderer.resize(width, height);
     $("#game").css("width", width);
     $("#game").css("height", height);
 
+    if (fullscreen !== lastFullscreen) {
+        // document.body.classList.toggle('fullscreen', isFull);
+        $("body").toggleClass('fullscreen', fullscreen);
+        // document.getElementById('game').classList.toggle('fullscreen', isFull);
+        $("#game").toggleClass('fullscreen', fullscreen);
+    }
+
     windowChange.resized = true;
+    console.log(MODULE_NAME_PREFIX, 'Resized canvas to:', width, height);
+}
+
+/**
+ * Prepares the canvas for the PIXI application.
+ * @param {*} app - The PIXI application to prepare.
+ * @param {*} windowChange - The window change object that tracks if the window was resized.
+ */
+function prepareCanvas(app, windowChange) {
+    resizeCanvas(app, windowChange);
+    windowChange.resized = false;
 }
 
 /**
@@ -277,6 +358,7 @@ async function setup(app) {
     
     // resize the canvas on window change
     window.addEventListener('resize', () => resizeCanvas(app, windowChange));
+    prepareCanvas(app, windowChange);
 
     const game = new Game(window, app, TEXTURES, SOUND_MANAGER, KEY_INPUTS, windowChange);
     console.log(MODULE_NAME_PREFIX, 'Game:', game);

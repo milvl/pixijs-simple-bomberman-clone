@@ -1,0 +1,36 @@
+{
+  "name": "uur_bomberman_clone",
+  "version": "1.0.0",
+  "description": "A semestral work for KIV/UUR",
+  "source": "index.html",
+  "scripts": {
+    "quickstart": "http-server",
+    "quickstart-build": "http-server dist",
+    "clean": "./scripts/unix/clean.sh",
+    "clean-win": "powershell -ExecutionPolicy Bypass -File .\\scripts\\win\\clean.ps1",
+    "start": "./scripts/unix/start.sh",
+    "start-win": "powershell -ExecutionPolicy Bypass -File .\\scripts\\win\\start.ps1",
+    "build-dev": "./scripts/unix/build_dev.sh",
+    "build-dev-win": "powershell -ExecutionPolicy Bypass -File .\\scripts\\win\\build_dev.ps1",
+    "build": "./scripts/unix/build.sh",
+    "build-win": "powershell -ExecutionPolicy Bypass -File .\\scripts\\win\\build.ps1",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Milan Vlachovsky (milvl@protonmail.com)",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.2.0",
+    "@pixi/sound": "6.0.0",
+    "jquery": "3.7.1",
+    "pixi.js": "8.1.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "http-server": "14.1.1",
+    "parcel": "2.12.0",
+    "process": "^0.11.10"
+  }
+}
