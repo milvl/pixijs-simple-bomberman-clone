@@ -1,7 +1,7 @@
 {
-  "name": "uur_bomberman_clone",
+  "name": "pixijs_simple_bomberman_clone",
   "version": "1.0.0",
-  "description": "A semestral work for KIV/UUR",
+  "description": "A simple Bomberman clone made with PixiJS.",
   "source": "index.html",
   "scripts": {
     "quickstart": "http-server",
