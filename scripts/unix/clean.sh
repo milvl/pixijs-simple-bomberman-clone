@@ -1,1 +1,3 @@
-rm -rf dist
+#! /bin/bash
+
+rm -rf dist .parcel-cache

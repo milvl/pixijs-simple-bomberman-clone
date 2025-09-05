@@ -1,0 +1,14 @@
+Following commands are available for Unix systems: 
+    npm run build       - Build the project in the 'dist' folder
+    npm run start       - Start a local server (http-server) to serve the 'dist' folder
+    npm run clean       - Remove the 'dist' folder and any other build artifacts
+    npm run build-dev   - Build the project in development mode (unminified, with source maps)
+    npm run setup-unix  - Changes the permissions of the script files so that they can be executed
+
+If the scripts are not functioning due to permission problems, try 'npm run setup-unix' first.
+
+Following commands are availible for Windows systems:
+    npm run build-win       - Build the project in the 'dist' folder
+    npm run start-win       - Start a local server (http-server) to serve the 'dist' folder
+    npm run clean-win       - Remove the 'dist' folder and any other build artifacts
+    npm run build-dev-win   - Build the project in development mode (unminified, with source maps)

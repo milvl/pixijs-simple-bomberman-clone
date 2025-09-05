@@ -1,3 +1,5 @@
+#! /bin/bash
+
 npm run clean
 mkdir dist
 cp -r img dist
